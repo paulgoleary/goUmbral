@@ -42,13 +42,13 @@ func (field *CurveField) GetGen() *CurveElement {
 	return field.gen
 }
 
-func (curveParams *CurveParams) getTargetField() *ZField {
+func (curveParams *CurveParams) GetTargetField() *ZField {
 	return curveParams.a.ElemField
 }
 
 func (field *CurveField) MakeElementFromBytes(elemBytes []byte) *CurveElement {
 
-	pnt := MakePointFromBytes(elemBytes, &field.getTargetField().BaseField)
+	pnt := MakePointFromBytes(elemBytes, &field.GetTargetField().BaseField)
 
 	elem := &CurveElement{ &field.CurveParams, *pnt}
 
@@ -65,7 +65,7 @@ func (params *CurveParams) calcYSquared(xIn *ModInt) *ModInt {
 	if !xIn.frozen {
 		panic("xIn needs to be frozen")
 	}
-	validateModulo(params.getTargetField().FieldOrder, xIn.m)
+	validateModulo(params.GetTargetField().FieldOrder, xIn.m)
 	return xIn.Square().Add(params.a.ModInt).Mul(xIn).Add(params.b.ModInt)
 }
 
@@ -74,11 +74,11 @@ func (params *CurveParams) calcYSquared(xIn *ModInt) *ModInt {
 // therefore - unlike MakeElementFromX - we iterate in a stable way to find a value that does satisfy the curve equation
 // the size of the hash must be such that we can guarantee that its value as an integer is less than our target order
 func (field *CurveField) MakeElementFromHash(h []byte) *CurveElement {
-	maxSafeBytes := field.getTargetField().LengthInBytes - 1
+	maxSafeBytes := field.GetTargetField().LengthInBytes - 1
 	if len(h) > maxSafeBytes {
 		log.Panicf("Cannot construct point from hash when byte length exceeds field capacity: max bytes %v, got %v", maxSafeBytes, len(h) )
 	}
-	calcX := copyFromBytes(h, true, field.getTargetField().FieldOrder)
+	calcX := copyFromBytes(h, true, field.GetTargetField().FieldOrder)
 
 	calcY2 := MI_ONE
 	gotIt := false
@@ -107,8 +107,8 @@ func (field *CurveField) MakeElementFromHash(h []byte) *CurveElement {
 }
 
 func (field *CurveField) MakeElement(x *big.Int, y *big.Int) *CurveElement {
-	copyX := CopyFrom(x, true, field.getTargetField().FieldOrder)
-	copyY := CopyFrom(y, true, field.getTargetField().FieldOrder)
+	copyX := CopyFrom(x, true, field.GetTargetField().FieldOrder)
+	copyY := CopyFrom(y, true, field.GetTargetField().FieldOrder)
 	elem := CurveElement{&field.CurveParams, PointLike{copyX, copyY}}
 	elem.freeze()
 	return &elem
@@ -117,7 +117,7 @@ func (field *CurveField) MakeElement(x *big.Int, y *big.Int) *CurveElement {
 // TODO: needs to account for sign
 func (field *CurveField) MakeElementFromX(x *big.Int) *CurveElement {
 
-	copyX := CopyFrom(x, true, field.getTargetField().FieldOrder)
+	copyX := CopyFrom(x, true, field.GetTargetField().FieldOrder)
 	calcY2 := field.calcYSquared(copyX)
 	if !calcY2.isSquare() {
 		log.Panicf("Expected to calculate square: value %s", calcY2.String())
@@ -130,13 +130,13 @@ func (field *CurveField) MakeElementFromX(x *big.Int) *CurveElement {
 }
 
 func (field *CurveField) newElementFromStrings(xStr string, yStr string) *CurveElement {
-	targetOrder := field.getTargetField().FieldOrder
+	targetOrder := field.GetTargetField().FieldOrder
 	return &CurveElement{&field.CurveParams,
 	PointLike{MakeModIntStr(xStr, true, targetOrder), MakeModIntStr(yStr, true, targetOrder)}}
 }
 
 func getLengthInBytes( field *CurveField ) int {
-	return field.getTargetField().LengthInBytes * 2
+	return field.GetTargetField().LengthInBytes * 2
 }
 
 func MakeCurveField(
@@ -186,7 +186,7 @@ var _ PointElement = (*CurveElement)(nil)
 var _ PowElement = (*CurveElement)(nil)
 
 func (elem *CurveElement) getTargetOrder() *big.Int {
-	return elem.elemParams.getTargetField().FieldOrder
+	return elem.elemParams.GetTargetField().FieldOrder
 }
 
 func (elem *CurveElement) NegateY() PointElement {
