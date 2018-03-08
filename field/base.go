@@ -52,6 +52,10 @@ func (bi *ModInt) GetValue() *big.Int {
 	return &bi.v
 }
 
+func (bi *ModInt) GetMod() *big.Int {
+	return bi.m
+}
+
 func (bi *ModInt) Freeze() {
 	bi.frozen = true
 	return

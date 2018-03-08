@@ -60,6 +60,11 @@ func GetRandomInt(order *big.Int) *big.Int {
 	return randInt
 }
 
+func BytesPadBigEndian(i *big.Int, l int) []byte {
+	iBytes := i.Bytes() // always big-endian...
+	return append(make([]byte, l - len(iBytes)), iBytes...)
+}
+
 func TimeTrack(start time.Time, name string) {
 	elapsed := time.Since(start)
 	log.Printf("%s took %s", name, elapsed)

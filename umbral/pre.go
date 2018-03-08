@@ -35,9 +35,16 @@ func encapsulate( curve *field.CurveField, pubKey *UmbralPublicKey, keyLength in
 	skU := GenPrivateKey(curve)
 	pkU := skU.GetPublicKey(curve)
 
-	items := []([]byte){pkR.toBytes(), pkU.toBytes()}
+	items := []([]byte){pkR.toBytes(true), pkU.toBytes(true)}
 	h := hashToModInt(curve, items)
-	field.Trace(h)
+
+	// s = priv_u + (priv_r * h)
+	s := skU.Add(skR.Mul(h))
+	field.Trace(s)
+
+	// shared_key = (priv_r + priv_u) * alice_pub_key
+	sharedKey := pubKey.MulScalar(skR.Add(&skU.ModInt).GetValue())
+	field.Trace(sharedKey)
 
 	return nil, nil
 }
@@ -64,8 +71,7 @@ func hashToModInt(curve *field.CurveField, items []([]byte)) *field.ModInt {
 	for h.Cmp(minValSha512) < 0 {
 		hasher := createAndInitHash()
 
-		iBytes := big.NewInt(i).Bytes()
-		iBigEndianPadded := append(make([]byte, curve.GetTargetField().LengthInBytes - len(iBytes)), iBytes...)
+		iBigEndianPadded := field.BytesPadBigEndian(big.NewInt(i), curve.GetTargetField().LengthInBytes)
 
 		hasher.Write(iBigEndianPadded)
 		hashDigest := hasher.Sum(nil)

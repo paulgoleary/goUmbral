@@ -19,7 +19,7 @@ type CurveParams struct {
 }
 
 type CurveElement struct {
-	elemParams *CurveParams
+	ElemParams *CurveParams
 	PointLike
 }
 
@@ -186,16 +186,16 @@ var _ PointElement = (*CurveElement)(nil)
 var _ PowElement = (*CurveElement)(nil)
 
 func (elem *CurveElement) getTargetOrder() *big.Int {
-	return elem.elemParams.GetTargetField().FieldOrder
+	return elem.ElemParams.GetTargetField().FieldOrder
 }
 
 func (elem *CurveElement) NegateY() PointElement {
 	if elem.IsInf() {
-		return &CurveElement{elem.elemParams, PointLike{nil, nil}}
+		return &CurveElement{elem.ElemParams, PointLike{nil, nil}}
 	}
 	elem.PointLike.freeze() // make sure we're frozen
 	yNeg := elem.dataY.Negate()
-	return &CurveElement{elem.elemParams, PointLike{elem.dataX, yNeg}}
+	return &CurveElement{elem.ElemParams, PointLike{elem.dataX, yNeg}}
 }
 
 func (elem *CurveElement) Invert() PointElement {
@@ -279,7 +279,7 @@ func (elem *CurveElement) isValid() bool {
 
 	validateModulo(elem.dataX.m, elem.dataY.m)
 
-	calcY2 := elem.elemParams.calcYSquared(elem.dataX)
+	calcY2 := elem.ElemParams.calcYSquared(elem.dataX)
 	calcY2Check := elem.dataY.Square()
 
 	return calcY2.IsValEqual(calcY2Check)
@@ -300,14 +300,14 @@ func (elem *CurveElement) CopyPow() PowElement {
 
 func (elem *CurveElement) dup() *CurveElement {
 	newElem := new(CurveElement)
-	newElem.elemParams = elem.elemParams
+	newElem.ElemParams = elem.ElemParams
 	newElem.dataX = elem.dataX.Copy()
 	newElem.dataY = elem.dataY.Copy()
 	return newElem
 }
 
 func (elem *CurveElement) MakeOnePow() PowElement {
-	return &CurveElement{elem.elemParams, PointLike{nil, nil}}
+	return &CurveElement{elem.ElemParams, PointLike{nil, nil}}
 }
 
 func (elem *CurveElement) MulPoint(elemIn PointElement) PointElement {
@@ -333,7 +333,7 @@ func (elem *CurveElement) twiceInternal() *CurveElement {
 
 	// We have P1 = P2 so the tangent line T at P1 ha slope
 	// lambda = (3x^2 + a) / 2y
-	lambdaNumer := elem.dataX.Square().Mul(MI_THREE).Add(elem.elemParams.a.ModInt)
+	lambdaNumer := elem.dataX.Square().Mul(MI_THREE).Add(elem.ElemParams.a.ModInt)
 	lambdaDenom := elem.dataY.Add(elem.dataY).Invert()
 	lambda := lambdaNumer.Mul(lambdaDenom)
 	lambda.Freeze()
@@ -346,7 +346,7 @@ func (elem *CurveElement) twiceInternal() *CurveElement {
 
 	x3.Freeze()
 	y3.Freeze()
-	return &CurveElement{ elem.elemParams, PointLike {x3, y3}}
+	return &CurveElement{ elem.ElemParams, PointLike {x3, y3}}
 }
 
 func (elem *CurveElement) mul(elemIn *CurveElement) *CurveElement {
@@ -366,12 +366,12 @@ func (elem *CurveElement) mul(elemIn *CurveElement) *CurveElement {
 	if elem.dataX.IsValEqual(elemIn.dataX) {
 		if elem.dataY.IsValEqual(elemIn.dataY) {
 			if elem.dataY.IsValEqual(MI_ZERO) {
-				return &CurveElement{elem.elemParams, PointLike{nil, nil}}
+				return &CurveElement{elem.ElemParams, PointLike{nil, nil}}
 			} else {
 				return elem.twiceInternal()
 			}
 		}
-		return &CurveElement{elem.elemParams, PointLike{nil, nil}}
+		return &CurveElement{elem.ElemParams, PointLike{nil, nil}}
 	}
 
 	// P1 != P2, so the slope of the line L through P1 and P2 is
@@ -389,5 +389,5 @@ func (elem *CurveElement) mul(elemIn *CurveElement) *CurveElement {
 
 	x3.Freeze()
 	y3.Freeze()
-	return &CurveElement{elem.elemParams, PointLike {x3, y3}}
+	return &CurveElement{elem.ElemParams, PointLike {x3, y3}}
 }
