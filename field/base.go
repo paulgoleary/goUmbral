@@ -19,6 +19,7 @@ var MI_ONE = MakeModInt(1, true, MOD_ANY)
 var MI_TWO = MakeModInt(2, true, MOD_ANY)
 var MI_THREE = MakeModInt(3, true, MOD_ANY)
 var MI_FOUR = MakeModInt(4, true, MOD_ANY)
+var MI_SEVEN = MakeModInt(7, true, MOD_ANY)
 var MI_EIGHT = MakeModInt(8, true, MOD_ANY)
 
 /*

@@ -6,7 +6,7 @@ import (
 )
 
 type UmbralPrivateKey struct {
-	field.ModInt
+	field.ZElement
 }
 
 type UmbralPublicKey struct {
@@ -35,7 +35,8 @@ func (key *UmbralPublicKey) toBytes(compressed bool) []byte {
 
 func GenPrivateKey(curveField *field.CurveField) *UmbralPrivateKey {
 	randoKey := field.GetRandomInt(curveField.FieldOrder)
-	return &UmbralPrivateKey{*field.CopyFrom(randoKey, true, curveField.FieldOrder)}
+	e := curveField.GetTargetField().NewElement(randoKey)
+	return &UmbralPrivateKey{*e}
 }
 
 func (key *UmbralPrivateKey) GetPublicKey(curveField *field.CurveField) *UmbralPublicKey {
