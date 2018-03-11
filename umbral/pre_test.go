@@ -77,6 +77,6 @@ func TestCapsuleSer(t *testing.T) {
 	cSerString := hex.EncodeToString(cSer)
 
 	if expectSerStr != cSerString {
-		t.Errorf("Incompatible serialization of Capsule: expect %d, got %d", expectSerStr, cSerString)
+		t.Errorf("Incompatible serialization of Capsule: expect %s, got %s", expectSerStr, cSerString)
 	}
 }

@@ -27,13 +27,14 @@ const SECRET_BOX_KEY_SIZE = 32
 
 func Encrypt( curve *field.CurveField, pubKey *UmbralPublicKey, plainText []byte ) ([]byte, *Capsule) {
 
-	// key, capsule = _encapsulate(alice_pubkey.point_key, SecretBox.KEY_SIZE)
 	key, capsule := encapsulate(curve, pubKey, SECRET_BOX_KEY_SIZE)
 
 	capsuleBytes := capsule.toBytes()
-	println(capsuleBytes)
 
-	return key, capsule // TODO: this is *wrong* but let's just compile for now ...
+	dem := MakeDEM(key)
+	cypher := dem.encrypt(plainText, capsuleBytes)
+
+	return cypher, capsule
 }
 
 // TODO: ok - make this part of a params object

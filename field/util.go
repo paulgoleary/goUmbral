@@ -60,6 +60,15 @@ func GetRandomInt(order *big.Int) *big.Int {
 	return randInt
 }
 
+func GetRandomBytes(len int) []byte {
+	rando := make([]byte, len)
+	_, err := rand.Read(rando)
+	if err != nil {
+		log.Panicf("Failed making random bytes: %v")
+	}
+	return rando
+}
+
 func BytesPadBigEndian(i *big.Int, l int) []byte {
 	iBytes := i.Bytes() // always big-endian...
 	return append(make([]byte, l - len(iBytes)), iBytes...)

@@ -52,7 +52,7 @@ func checkPowWindow(t *testing.T, testBase *TestElement, testExp, expectedVal *b
 	var elem PowElement = testBase
 	testPow := powWindow(elem, testExp)
 	if testPow.(*TestElement).data.Cmp(expectedVal) != 0 {
-		t.Errorf("powWindow exponent result was wrong, got: %d, want: %d.", testPow.String(), expectedVal.String())
+		t.Errorf("powWindow exponent result was wrong, got: %v, want: %v.", testPow.String(), expectedVal.String())
 	}
 }
 
