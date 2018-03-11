@@ -182,14 +182,14 @@ func makeTestCurveField(a *big.Int, b *big.Int, r *big.Int, q *big.Int) *CurveFi
 
 // TODO: Make function?
 
-var _ PointElement = (*CurveElement)(nil)
+// var _ PointElement = (*CurveElement)(nil)
 var _ PowElement = (*CurveElement)(nil)
 
 func (elem *CurveElement) getTargetOrder() *big.Int {
 	return elem.ElemParams.GetTargetField().FieldOrder
 }
 
-func (elem *CurveElement) NegateY() PointElement {
+func (elem *CurveElement) NegateY() *CurveElement {
 	if elem.IsInf() {
 		return &CurveElement{elem.ElemParams, PointLike{nil, nil}}
 	}
@@ -198,7 +198,7 @@ func (elem *CurveElement) NegateY() PointElement {
 	return &CurveElement{elem.ElemParams, PointLike{elem.dataX, yNeg}}
 }
 
-func (elem *CurveElement) Invert() PointElement {
+func (elem *CurveElement) Invert() *CurveElement {
 	if elem.IsInf() {
 		return elem
 	}
@@ -207,16 +207,16 @@ func (elem *CurveElement) Invert() PointElement {
 	return elem
 }
 
-func (elem *CurveElement) Square() PointElement {
+func (elem *CurveElement) Square() *CurveElement {
 	// TODO !?
 	return nil
 }
 
-func (elem *CurveElement) Add(elemIn PointElement) PointElement {
+func (elem *CurveElement) Add(elemIn *CurveElement) *CurveElement {
 	return elem.MulPoint(elemIn)
 }
 
-func (elem *CurveElement) Sub(_ PointElement) PointElement {
+func (elem *CurveElement) Sub(_ *CurveElement) *CurveElement {
 	return nil // TODO!?
 }
 
@@ -259,7 +259,7 @@ func (elem *CurveElement) PowZn(in *big.Int) *CurveElement {
 	return result
 }
 
-func (elem *CurveElement) Pow(in *ModInt) PointElement {
+func (elem *CurveElement) Pow(in *ModInt) *CurveElement {
 	return elem.PowZn(&in.v)
 }
 
@@ -310,8 +310,8 @@ func (elem *CurveElement) MakeOnePow() PowElement {
 	return &CurveElement{elem.ElemParams, PointLike{nil, nil}}
 }
 
-func (elem *CurveElement) MulPoint(elemIn PointElement) PointElement {
-	res := elem.mul(elemIn.(*CurveElement))
+func (elem *CurveElement) MulPoint(elemIn *CurveElement) *CurveElement {
+	res := elem.mul(elemIn)
 	return res
 }
 

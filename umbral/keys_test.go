@@ -10,14 +10,14 @@ import (
 // TODO: implement serde functions and test ...
 
 func TestBasics(t *testing.T) {
-	testField := crypto.MakeSecp256k1()
-	testPrivKey := GenPrivateKey(testField)
+	cxt := MakeDefaultContext()
+	testPrivKey := GenPrivateKey(cxt)
 
-	if !(testPrivKey.GetMod() == testField.FieldOrder) {
+	if !(testPrivKey.GetMod() == cxt.curveField.FieldOrder) {
 		t.Errorf("Trivial test - generated key should have same order as specified field")
 	}
 
-	testPubKey := testPrivKey.GetPublicKey(testField)
+	testPubKey := testPrivKey.GetPublicKey(cxt)
 	if testPubKey.IsInf() {
 		t.Errorf("Trivial test - derived public key should be valid (non-inf)")
 	}

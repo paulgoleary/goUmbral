@@ -23,10 +23,10 @@ func TestPreBasics(t *testing.T) {
 
 func TestHashToModInt(t *testing.T) {
 
-	testField := crypto.MakeSecp256k1()
+	cxt := MakeDefaultContext()
 
 	items := []([]byte){{0xDE, 0xAD, 0xBE, 0xEF}, {0xCA, 0xFE, 0xBA, 0xBE}}
-	testResult := hashToModInt(testField, items)
+	testResult := hashToModInt(cxt, items)
 
 	expectResult, _ := big.NewInt(0).SetString("25995041633682703655811824485328222867845357606727537858371991100866687428737", 10)
 
@@ -36,18 +36,18 @@ func TestHashToModInt(t *testing.T) {
 	}
 }
 
-func makeTestKeys(testField *field.CurveField, i int64) (*field.ZElement, *UmbralPublicKey) {
-	testElement := testField.GetTargetField().NewElement(big.NewInt(i))
+func makeTestKeys(cxt *Context, i int64) (*field.ZElement, *UmbralPublicKey) {
+	testElement := cxt.targetField.NewElement(big.NewInt(i))
 	privKey := UmbralPrivateKey{*testElement}
-	pubKey := privKey.GetPublicKey(testField)
+	pubKey := privKey.GetPublicKey(cxt)
 	return testElement, pubKey
 }
 
 func TestKDF(t *testing.T) {
 
-	testField := crypto.MakeSecp256k1()
+	cxt := MakeDefaultContext()
 
-	_, pubKey := makeTestKeys(testField, 7)
+	_, pubKey := makeTestKeys(cxt, 7)
 
 	keyLength := 32
 	testData := kdf(&pubKey.CurveElement, keyLength)
@@ -64,11 +64,11 @@ func TestKDF(t *testing.T) {
 
 func TestCapsuleSer(t *testing.T) {
 
-	testField := crypto.MakeSecp256k1()
+	cxt := MakeDefaultContext()
 
-	_, pubKey7 := makeTestKeys(testField, 7)
+	_, pubKey7 := makeTestKeys(cxt, 7)
 
-	testElement10k, pubKey10k := makeTestKeys(testField, 10 * 1000)
+	testElement10k, pubKey10k := makeTestKeys(cxt, 10 * 1000)
 
 	expectSerStr := "025cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc037a36d7efeac579690f7b89c8982329303a02bd710bc87f4eaaf5cfd84c2f6fae0000000000000000000000000000000000000000000000000000000000002710"
 

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"hash"
 	"golang.org/x/crypto/hkdf"
+	"log"
 )
 
 type Capsule struct {
@@ -22,12 +23,21 @@ func (c *Capsule) toBytes() []byte {
 		field.BytesPadBigEndian(c.s.GetValue(), c.s.ElemField.LengthInBytes)...)
 }
 
+func (c *Capsule) verify(cxt *Context) bool {
+	items := []([]byte){c.E.toBytes(true), c.V.toBytes(true)}
+	h := hashToModInt(cxt, items)
+
+	l := cxt.curveField.GetGen().MulScalar(c.s.GetValue())
+	r := c.E.MulScalar(h.GetValue()).Add(&c.V.CurveElement)
+	return l.IsValEqual(&r.PointLike)
+}
+
 // TODO: parameterize a/o get from somewhere else?
 const SECRET_BOX_KEY_SIZE = 32
 
-func Encrypt( curve *field.CurveField, pubKey *UmbralPublicKey, plainText []byte ) ([]byte, *Capsule) {
+func Encrypt( cxt *Context, pubKey *UmbralPublicKey, plainText []byte ) ([]byte, *Capsule) {
 
-	key, capsule := encapsulate(curve, pubKey, SECRET_BOX_KEY_SIZE)
+	key, capsule := encapsulate(cxt, pubKey, SECRET_BOX_KEY_SIZE)
 
 	capsuleBytes := capsule.toBytes()
 
@@ -37,10 +47,14 @@ func Encrypt( curve *field.CurveField, pubKey *UmbralPublicKey, plainText []byte
 	return cypher, capsule
 }
 
-// TODO: ok - make this part of a params object
-func getMinValSha512(curve *field.CurveField) *big.Int {
-	maxInt512 := big.NewInt(0).Lsh(big.NewInt(1), 512)
-	return big.NewInt(0).Mod(maxInt512, curve.FieldOrder)
+func Decrypt( cxt *Context, capsule *Capsule, privKey *UmbralPrivateKey, cipherText []byte ) []byte {
+
+	key := decapsulate(cxt, privKey, capsule, SECRET_BOX_KEY_SIZE)
+	dem := MakeDEM(key)
+
+	capsuleBytes := capsule.toBytes()
+
+	return dem.decrypt(cipherText, capsuleBytes)
 }
 
 func kdf(keyPoint *field.CurveElement, keySize int) []byte {
@@ -55,28 +69,37 @@ func kdf(keyPoint *field.CurveElement, keySize int) []byte {
 	return derivedKey
 }
 
-func encapsulate( curve *field.CurveField, pubKey *UmbralPublicKey, keyLength int ) ([]byte, *Capsule) {
+func encapsulate( cxt *Context, pubKey *UmbralPublicKey, keyLength int ) ([]byte, *Capsule) {
 
-	skR := GenPrivateKey(curve)
-	pkR := skR.GetPublicKey(curve)
+	skR := GenPrivateKey(cxt)
+	pkR := skR.GetPublicKey(cxt)
 
-	skU := GenPrivateKey(curve)
-	pkU := skU.GetPublicKey(curve)
+	skU := GenPrivateKey(cxt)
+	pkU := skU.GetPublicKey(cxt)
 
 	items := []([]byte){pkR.toBytes(true), pkU.toBytes(true)}
-	h := hashToModInt(curve, items)
+	h := hashToModInt(cxt, items)
 
-	// s = priv_u + (priv_r * h)
 	s := skU.Add(skR.Mul(h))
-	sElem := curve.GetTargetField().NewElement(s.GetValue())
+	sElem := cxt.targetField.NewElement(s.GetValue())
 
-	// shared_key = (priv_r + priv_u) * alice_pub_key
 	sharedKey := pubKey.MulScalar(skR.Add(skU.ModInt).GetValue())
-	// sharedKey := pubKey.Pow(skR.Add(&skU.ModInt)) - equivalent but returns PointElement ...
 
 	symmetricKey := kdf(sharedKey, keyLength)
 
 	return symmetricKey, &Capsule{pkR, pkU, sElem}
+}
+
+func decapsulate(cxt *Context, privKey *UmbralPrivateKey, capsule *Capsule, keyLength int) []byte {
+
+	sharedKey := capsule.E.Add(&capsule.V.CurveElement).MulScalar(privKey.GetValue())
+	key := kdf(sharedKey, keyLength)
+
+	if !capsule.verify(cxt) {
+		log.Panicf("Capsule validation failed.") // TODO: not sure this should be a panic
+	}
+
+	return key
 }
 
 func traceHash(h hash.Hash) {
@@ -84,7 +107,7 @@ func traceHash(h hash.Hash) {
 	println(fmt.Sprintf("b'%x'", testDigest))
 }
 
-func hashToModInt(curve *field.CurveField, items []([]byte)) *field.ModInt {
+func hashToModInt(cxt *Context, items []([]byte)) *field.ModInt {
 
 	createAndInitHash := func() hash.Hash {
 		hasher := sha512.New()
@@ -94,14 +117,12 @@ func hashToModInt(curve *field.CurveField, items []([]byte)) *field.ModInt {
 		return hasher
 	}
 
-	minValSha512 := getMinValSha512(curve)
-
 	i := int64(0)
 	h := big.NewInt(0)
-	for h.Cmp(minValSha512) < 0 {
+	for h.Cmp(cxt.minValSha512) < 0 {
 		hasher := createAndInitHash()
 
-		iBigEndianPadded := field.BytesPadBigEndian(big.NewInt(i), curve.GetTargetField().LengthInBytes)
+		iBigEndianPadded := field.BytesPadBigEndian(big.NewInt(i), cxt.targetField.LengthInBytes)
 
 		hasher.Write(iBigEndianPadded)
 		hashDigest := hasher.Sum(nil)
@@ -109,6 +130,6 @@ func hashToModInt(curve *field.CurveField, items []([]byte)) *field.ModInt {
 		i += 1
 	}
 
-	res := field.CopyFrom(h.Mod(h, curve.FieldOrder), true, curve.FieldOrder)
+	res := field.CopyFrom(h.Mod(h, cxt.targetField.FieldOrder), true, cxt.targetField.FieldOrder)
 	return res
 }

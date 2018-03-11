@@ -2,23 +2,27 @@ package umbral
 
 import (
 	"testing"
-	"goUmbral/crypto"
 	"goUmbral/field"
+	"reflect"
 )
 
 func TestAPIBasics(t *testing.T) {
 
-	// TODO? explicit param object?
-	testField := crypto.MakeSecp256k1()
+	cxt := MakeDefaultContext()
 
-	privKeyAlice := GenPrivateKey(testField)
-	pubKeyAlice := privKeyAlice.GetPublicKey(testField)
-	field.Trace(pubKeyAlice)
+	privKeyAlice := GenPrivateKey(cxt)
+	pubKeyAlice := privKeyAlice.GetPublicKey(cxt)
 
-	privKeyBob := GenPrivateKey(testField)
-	pubKeyBob := privKeyBob.GetPublicKey(testField)
+	privKeyBob := GenPrivateKey(cxt)
+	pubKeyBob := privKeyBob.GetPublicKey(cxt)
 	field.Trace(pubKeyBob)
 
 	plainText := []byte("attack at dawn")
-	_, _ = Encrypt(testField, pubKeyAlice, plainText)
+	cipherText, capsule := Encrypt(cxt, pubKeyAlice, plainText)
+
+	testDecrypt := Decrypt(cxt, capsule, privKeyAlice, cipherText)
+
+	if !reflect.DeepEqual(plainText, testDecrypt) {
+		t.Errorf( "Direct decryption failed")
+	}
 }

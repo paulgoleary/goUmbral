@@ -33,14 +33,14 @@ func (key *UmbralPublicKey) toBytes(compressed bool) []byte {
 
 // UmbralPrivateKey
 
-func GenPrivateKey(curveField *field.CurveField) *UmbralPrivateKey {
-	randoKey := field.GetRandomInt(curveField.FieldOrder)
-	e := curveField.GetTargetField().NewElement(randoKey)
+func GenPrivateKey(cxt *Context) *UmbralPrivateKey {
+	randoKey := field.GetRandomInt(cxt.targetField.FieldOrder)
+	e := cxt.targetField.NewElement(randoKey)
 	return &UmbralPrivateKey{*e}
 }
 
-func (key *UmbralPrivateKey) GetPublicKey(curveField *field.CurveField) *UmbralPublicKey {
-	calcPublicKey := curveField.GetGen().MulScalar(key.GetValue())
+func (key *UmbralPrivateKey) GetPublicKey(cxt *Context) *UmbralPublicKey {
+	calcPublicKey := cxt.curveField.GetGen().MulScalar(key.GetValue())
 	return &UmbralPublicKey{ *calcPublicKey }
 }
 

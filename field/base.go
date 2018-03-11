@@ -117,7 +117,7 @@ func (bi *ModInt) modInternal(in *ModInt) *ModInt {
 		bi = bi.copyUnfrozen()
 	}
 
-	if (bi.m != in.m && in.m != MOD_ANY && bi.m.Cmp(in.m) != 0 ) {
+	if bi.m != in.m && in.m != MOD_ANY && bi.m.Cmp(in.m) != 0 {
 		log.Panicf("Cannot perform mod arithmetic with different modulo")
 	}
 
@@ -204,9 +204,11 @@ func (bi *ModInt) String() string {
 
 type Field interface {}
 
+/*
 type PointField interface {
 	MakeElement(x *ModInt, y *ModInt) PointElement
 }
+*/
 
 type PowElement interface {
 	String() string
@@ -215,6 +217,7 @@ type PowElement interface {
 	MulPow(PowElement) PowElement
 }
 
+/*
 type PointElement interface {
 	String() string
 	X() *ModInt
@@ -228,6 +231,7 @@ type PointElement interface {
 	Pow(*ModInt) PointElement
 	IsValEqual(PointElement) bool
 }
+*/
 
 type BaseField struct {
 	LengthInBytes int
@@ -268,7 +272,7 @@ func (p *PointLike) Y() *ModInt {
 	return p.dataY
 }
 
-func (p *PointLike) IsValEqual(elemIn PointElement) bool {
+func (p *PointLike) IsValEqual(elemIn *PointLike) bool {
 	return p.dataX.IsValEqual(elemIn.X()) && p.dataY.IsValEqual(elemIn.Y())
 }
 
