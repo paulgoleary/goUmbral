@@ -11,8 +11,8 @@ import (
 )
 
 type Capsule struct {
-	E	*UmbralPublicKey
-	V 	*UmbralPublicKey
+	E	*UmbralCurveElement
+	V 	*UmbralCurveElement
 	s 	*field.ZElement
 }
 
@@ -35,7 +35,7 @@ func (c *Capsule) verify(cxt *Context) bool {
 // TODO: parameterize a/o get from somewhere else?
 const SECRET_BOX_KEY_SIZE = 32
 
-func Encrypt( cxt *Context, pubKey *UmbralPublicKey, plainText []byte ) ([]byte, *Capsule) {
+func Encrypt( cxt *Context, pubKey *UmbralCurveElement, plainText []byte ) ([]byte, *Capsule) {
 
 	key, capsule := encapsulate(cxt, pubKey, SECRET_BOX_KEY_SIZE)
 
@@ -47,7 +47,7 @@ func Encrypt( cxt *Context, pubKey *UmbralPublicKey, plainText []byte ) ([]byte,
 	return cypher, capsule
 }
 
-func Decrypt( cxt *Context, capsule *Capsule, privKey *UmbralPrivateKey, cipherText []byte ) []byte {
+func Decrypt( cxt *Context, capsule *Capsule, privKey *UmbralFieldElement, cipherText []byte ) []byte {
 
 	key := decapsulate(cxt, privKey, capsule, SECRET_BOX_KEY_SIZE)
 	dem := MakeDEM(key)
@@ -57,10 +57,74 @@ func Decrypt( cxt *Context, capsule *Capsule, privKey *UmbralPrivateKey, cipherT
 	return dem.decrypt(cipherText, capsuleBytes)
 }
 
+func hornerPolyEval(poly []*field.ModInt, x *field.ModInt) *field.ModInt {
+	result := poly[0]
+	for i := 1; i < len(poly); i++ {
+		result = result.Mul(x).Add(poly[i])
+	}
+	return result
+}
+
+type KFrag struct {
+	id *field.ModInt
+	rk *field.ModInt
+	xComp *UmbralCurveElement
+	u1 *UmbralCurveElement
+	z1 *field.ModInt
+	z2 *field.ModInt
+}
+
+func SplitReKey(cxt *Context, privA *UmbralFieldElement, pubB *UmbralCurveElement, threshold int, numSplits int) []KFrag {
+
+	pubA := privA.GetPublicKey(cxt)
+
+	x := GenPrivateKey(cxt)
+	xComp := x.GetPublicKey(cxt) // gen^x
+
+	dhB := pubB.Mul(x) // pk_b^x
+
+	d := hashToModInt(cxt, [][]byte {
+		xComp.toBytes(true),
+		pubB.toBytes(true),
+		dhB.toBytes(true)})
+
+	coeff0 := privA.Mul(d.Invert())
+
+	coeffs := make([]*field.ModInt, threshold - 1)
+	for i := range coeffs {
+		coeffs[i] = field.MakeModIntRandom(cxt.GetOrder())
+	}
+	coeffs = append(coeffs, coeff0)
+
+	kFrags := make([]KFrag, numSplits)
+	for i := range kFrags {
+		id := field.MakeModIntRandom(cxt.GetOrder())
+		rk := hornerPolyEval(coeffs, id)
+
+		u1 := cxt.MulU(rk) // U^rk
+
+		y := field.MakeModIntRandom(cxt.GetOrder())
+
+		z1 := hashToModInt(cxt, [][]byte {
+			cxt.MulGen(y).toBytes(true), // gen^y
+			field.BytesPadBigEndian(id.GetValue(), cxt.curveField.LengthInBytes), // TODO: ugly :/
+			pubA.toBytes(true),
+			pubB.toBytes(true),
+			u1.toBytes(true),
+			xComp.toBytes(true),
+		})
+		z2 :=y.Sub(privA.Mul(z1))
+
+		kFrags[i] = KFrag { id, rk, xComp, u1, z1, z2 }
+	}
+
+	return kFrags
+}
+
 func kdf(keyPoint *field.CurveElement, keySize int) []byte {
 
 	// TODO: awkward?
-	pointKey := UmbralPublicKey{*keyPoint}
+	pointKey := UmbralCurveElement{*keyPoint}
 	keyMaster := hkdf.New(sha512.New, pointKey.toBytes(true), nil, nil)
 
 	derivedKey := make([]byte, keySize)
@@ -69,7 +133,7 @@ func kdf(keyPoint *field.CurveElement, keySize int) []byte {
 	return derivedKey
 }
 
-func encapsulate( cxt *Context, pubKey *UmbralPublicKey, keyLength int ) ([]byte, *Capsule) {
+func encapsulate( cxt *Context, pubKey *UmbralCurveElement, keyLength int ) ([]byte, *Capsule) {
 
 	skR := GenPrivateKey(cxt)
 	pkR := skR.GetPublicKey(cxt)
@@ -90,7 +154,7 @@ func encapsulate( cxt *Context, pubKey *UmbralPublicKey, keyLength int ) ([]byte
 	return symmetricKey, &Capsule{pkR, pkU, sElem}
 }
 
-func decapsulate(cxt *Context, privKey *UmbralPrivateKey, capsule *Capsule, keyLength int) []byte {
+func decapsulate(cxt *Context, privKey *UmbralFieldElement, capsule *Capsule, keyLength int) []byte {
 
 	sharedKey := capsule.E.Add(&capsule.V.CurveElement).MulScalar(privKey.GetValue())
 	key := kdf(sharedKey, keyLength)

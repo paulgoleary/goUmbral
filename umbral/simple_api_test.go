@@ -2,7 +2,6 @@ package umbral
 
 import (
 	"testing"
-	"goUmbral/field"
 	"reflect"
 )
 
@@ -15,7 +14,6 @@ func TestAPIBasics(t *testing.T) {
 
 	privKeyBob := GenPrivateKey(cxt)
 	pubKeyBob := privKeyBob.GetPublicKey(cxt)
-	field.Trace(pubKeyBob)
 
 	plainText := []byte("attack at dawn")
 	cipherText, capsule := Encrypt(cxt, pubKeyAlice, plainText)
@@ -25,4 +23,7 @@ func TestAPIBasics(t *testing.T) {
 	if !reflect.DeepEqual(plainText, testDecrypt) {
 		t.Errorf( "Direct decryption failed")
 	}
+
+	keyFrags := SplitReKey(cxt, privKeyAlice, pubKeyBob, 1, 1 )
+	println(keyFrags)
 }

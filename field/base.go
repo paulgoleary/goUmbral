@@ -37,6 +37,10 @@ func MakeModInt(x int64, frozen bool, mod *big.Int) *ModInt {
 	return &ModInt{ *big.NewInt(x), frozen, mod}
 }
 
+func MakeModIntRandom(order *big.Int) *ModInt {
+	return &ModInt{*GetRandomInt(order), true, order}
+}
+
 func MakeModIntWords(w []big.Word, frozen bool, mod *big.Int) *ModInt {
 	bi := new(big.Int)
 	bi.SetBits(w)

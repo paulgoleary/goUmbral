@@ -36,9 +36,9 @@ func TestHashToModInt(t *testing.T) {
 	}
 }
 
-func makeTestKeys(cxt *Context, i int64) (*field.ZElement, *UmbralPublicKey) {
+func makeTestKeys(cxt *Context, i int64) (*field.ZElement, *UmbralCurveElement) {
 	testElement := cxt.targetField.NewElement(big.NewInt(i))
-	privKey := UmbralPrivateKey{*testElement}
+	privKey := UmbralFieldElement{*testElement}
 	pubKey := privKey.GetPublicKey(cxt)
 	return testElement, pubKey
 }

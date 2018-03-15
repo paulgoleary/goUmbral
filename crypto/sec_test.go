@@ -26,7 +26,7 @@ func TestSecp256k1Basics(t *testing.T) {
 
 	k := curve.GetGen().MulScalar(b)
 
-	if !k.IsValEqual(expectPoint) {
+	if !k.IsValEqual(&expectPoint.PointLike) {
 		t.Errorf("Invalid curve element mul result: expected %s, got %s", expectPoint, k)
 	}
 }

@@ -5,44 +5,49 @@ import (
 	"math/big"
 )
 
-type UmbralPrivateKey struct {
+type UmbralFieldElement struct {
 	field.ZElement
 }
 
-type UmbralPublicKey struct {
+type UmbralCurveElement struct {
 	field.CurveElement
 }
 
-// TODO: currently implementing this on UmbralPublicKey - as opposed to CurveElement - because pyUmbral has a very specific way of serializing
-func (key *UmbralPublicKey) toBytes(compressed bool) []byte {
-
-	keySize := key.ElemParams.GetTargetField().LengthInBytes
-
+// TODO: hmmm... need to think about this ...
+func toUmbralBytes(elem *field.CurveElement, compressed bool, keySize int) []byte {
 	if compressed {
-		yBit := big.NewInt(0).And(key.Y().GetValue(), field.ONE)
+		yBit := big.NewInt(0).And(elem.Y().GetValue(), field.ONE)
 		yBit = yBit.Add(yBit, field.TWO)
-		return append(yBit.Bytes(), field.BytesPadBigEndian(key.X().GetValue(), keySize)...)
+		return append(yBit.Bytes(), field.BytesPadBigEndian(elem.X().GetValue(), keySize)...)
 	} else {
 		data := make([]byte, 1)
 		data[0] = 0x04
-		data = append(data, field.BytesPadBigEndian(key.X().GetValue(), keySize)...)
-		data = append(data, field.BytesPadBigEndian(key.Y().GetValue(), keySize)...)
+		data = append(data, field.BytesPadBigEndian(elem.X().GetValue(), keySize)...)
+		data = append(data, field.BytesPadBigEndian(elem.Y().GetValue(), keySize)...)
 		return data
 	}
 }
 
-// UmbralPrivateKey
+// TODO: currently implementing this on UmbralCurveElement - as opposed to CurveElement - because pyUmbral has a very specific way of serializing
+func (key *UmbralCurveElement) toBytes(compressed bool) []byte {
+	return toUmbralBytes(&key.CurveElement, true, key.ElemParams.GetTargetField().LengthInBytes)
+}
 
-func GenPrivateKey(cxt *Context) *UmbralPrivateKey {
+// UmbralFieldElement
+
+func GenPrivateKey(cxt *Context) *UmbralFieldElement {
 	randoKey := field.GetRandomInt(cxt.targetField.FieldOrder)
 	e := cxt.targetField.NewElement(randoKey)
-	return &UmbralPrivateKey{*e}
+	return &UmbralFieldElement{*e}
 }
 
-func (key *UmbralPrivateKey) GetPublicKey(cxt *Context) *UmbralPublicKey {
+func (key *UmbralFieldElement) GetPublicKey(cxt *Context) *UmbralCurveElement {
 	calcPublicKey := cxt.curveField.GetGen().MulScalar(key.GetValue())
-	return &UmbralPublicKey{ *calcPublicKey }
+	return &UmbralCurveElement{ *calcPublicKey }
 }
 
-// UmbralPublicKey
+// UmbralCurveElement
 
+func (pk *UmbralCurveElement) Mul(sk *UmbralFieldElement) *UmbralCurveElement {
+	return &UmbralCurveElement{*pk.MulScalar(sk.GetValue())}
+}
