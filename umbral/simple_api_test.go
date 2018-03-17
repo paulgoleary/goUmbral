@@ -18,12 +18,19 @@ func TestAPIBasics(t *testing.T) {
 	plainText := []byte("attack at dawn")
 	cipherText, capsule := Encrypt(cxt, pubKeyAlice, plainText)
 
-	testDecrypt := Decrypt(cxt, capsule, privKeyAlice, cipherText)
+	testDecrypt := DecryptDirect(cxt, capsule, privKeyAlice, cipherText)
 
 	if !reflect.DeepEqual(plainText, testDecrypt) {
 		t.Errorf( "Direct decryption failed")
 	}
 
-	keyFrags := SplitReKey(cxt, privKeyAlice, pubKeyBob, 1, 1 )
-	println(keyFrags)
+	kFrags := SplitReKey(cxt, privKeyAlice, pubKeyBob, 1, 1 )
+
+	cFrags := make([]*CFrag, len(kFrags))
+	for i := range kFrags {
+		cFrags[i] = ReEncapsulate(kFrags[i], capsule)
+	}
+
+	testDecryptFrags := DecryptFragments(cxt, capsule, privKeyBob, pubKeyAlice, cipherText)
+	println(testDecryptFrags)
 }

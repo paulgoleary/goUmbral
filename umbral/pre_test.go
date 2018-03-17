@@ -148,3 +148,20 @@ func TestPolyCompat(t *testing.T) {
 	testPolyEval("f6065f0e116c91971615ebcb568c3ddaad0a1dc25ea952374bdfacc89a7b85c8",
 		"df1e495dc8fb81119a86bec9ec15d308a162c9932dff52666858f780e2f59e75")
 }
+
+func TestCapDecap(t *testing.T) {
+
+	cxt := MakeDefaultContext()
+
+	alicePriv := MakePrivateKey(cxt,
+		field.MakeModIntStr("706e365373416535326e73346573576847324b546a7862787978456e685452343736427a4e3830787070773d", 16, cxt.GetOrder()))
+	alicePub := alicePriv.GetPublicKey(cxt)
+
+	capKey, cap := encapsulate(cxt, alicePub)
+
+	decapKey := decapsulate(cxt, alicePriv, cap)
+
+	if !reflect.DeepEqual(decapKey, capKey ) {
+		t.Errorf("Incorrect key cap/decap, expected %v, got %v", capKey, decapKey)
+	}
+}

@@ -32,12 +32,9 @@ func (c *Capsule) verify(cxt *Context) bool {
 	return l.IsValEqual(&r.PointLike)
 }
 
-// TODO: parameterize a/o get from somewhere else?
-const SECRET_BOX_KEY_SIZE = 32
-
 func Encrypt( cxt *Context, pubKey *UmbralCurveElement, plainText []byte ) ([]byte, *Capsule) {
 
-	key, capsule := encapsulate(cxt, pubKey, SECRET_BOX_KEY_SIZE)
+	key, capsule := encapsulate(cxt, pubKey)
 
 	capsuleBytes := capsule.toBytes()
 
@@ -47,14 +44,19 @@ func Encrypt( cxt *Context, pubKey *UmbralCurveElement, plainText []byte ) ([]by
 	return cypher, capsule
 }
 
-func Decrypt( cxt *Context, capsule *Capsule, privKey *UmbralFieldElement, cipherText []byte ) []byte {
+func DecryptDirect( cxt *Context, capsule *Capsule, privKey *UmbralFieldElement, cipherText []byte ) []byte {
 
-	key := decapsulate(cxt, privKey, capsule, SECRET_BOX_KEY_SIZE)
+	key := decapsulate(cxt, privKey, capsule)
 	dem := MakeDEM(key)
 
 	capsuleBytes := capsule.toBytes()
 
 	return dem.decrypt(cipherText, capsuleBytes)
+}
+
+func DecryptFragments( cxt *Context, capsule *Capsule, privKey *UmbralFieldElement, origPubKey *UmbralCurveElement, cipherText []byte ) []byte {
+
+	return nil
 }
 
 func hornerPolyEval(poly []*field.ModInt, x *field.ModInt) *field.ModInt {
@@ -74,7 +76,7 @@ type KFrag struct {
 	z2 *field.ModInt
 }
 
-func SplitReKey(cxt *Context, privA *UmbralFieldElement, pubB *UmbralCurveElement, threshold int, numSplits int) []KFrag {
+func SplitReKey(cxt *Context, privA *UmbralFieldElement, pubB *UmbralCurveElement, threshold int, numSplits int) []*KFrag {
 
 	pubA := privA.GetPublicKey(cxt)
 
@@ -100,7 +102,7 @@ func SplitReKey(cxt *Context, privA *UmbralFieldElement, pubB *UmbralCurveElemen
 	}
 	coeffs = append(coeffs, coeff0)
 
-	kFrags := make([]KFrag, numSplits)
+	kFrags := make([]*KFrag, numSplits)
 	for i := range kFrags {
 		id := field.MakeModIntRandom(cxt.GetOrder())
 		rk := hornerPolyEval(coeffs, id)
@@ -117,12 +119,36 @@ func SplitReKey(cxt *Context, privA *UmbralFieldElement, pubB *UmbralCurveElemen
 			u1.toBytes(true),
 			xComp.toBytes(true),
 		})
-		z2 :=y.Sub(privA.Mul(z1))
+		z2 := y.Sub(privA.Mul(z1))
 
-		kFrags[i] = KFrag { id, rk, xComp, u1, z1, z2 }
+		// kfrag is:
+		// . id - random element of Zq - input to shamir poly
+		// . rk - result of shamir poly eval
+		// . gen^x - used as input to d
+		// . U^rk ??? why? U is a parameter and rk is known
+		// . hash of (gen^y, id, gen^a, gen^b, U^rk, gen^x)
+		// . y (random Z element) - (privA * hash)
+		kFrags[i] = &KFrag { id, rk, xComp, u1, z1, z2 }
 	}
 
 	return kFrags
+}
+
+type CFrag struct {
+	e1 *UmbralCurveElement
+	v1 *UmbralCurveElement
+	id *field.ModInt
+	x *UmbralCurveElement
+}
+
+func ReEncapsulate(frag *KFrag, cap *Capsule) *CFrag {
+	// e1 = k_frag.bn_key * capsule._point_eph_e
+	e1 := cap.E.MulScalar(frag.rk.GetValue())
+
+	// v1 = k_frag.bn_key * capsule._point_eph_v
+	v1 := cap.V.MulScalar(frag.rk.GetValue())
+
+	return &CFrag{&UmbralCurveElement{*e1}, &UmbralCurveElement{*v1}, frag.id, frag.xComp}
 }
 
 func kdf(keyPoint *field.CurveElement, keySize int) []byte {
@@ -137,7 +163,7 @@ func kdf(keyPoint *field.CurveElement, keySize int) []byte {
 	return derivedKey
 }
 
-func encapsulate( cxt *Context, pubKey *UmbralCurveElement, keyLength int ) ([]byte, *Capsule) {
+func encapsulate( cxt *Context, pubKey *UmbralCurveElement) ([]byte, *Capsule) {
 
 	skR := GenPrivateKey(cxt)
 	pkR := skR.GetPublicKey(cxt)
@@ -153,15 +179,15 @@ func encapsulate( cxt *Context, pubKey *UmbralCurveElement, keyLength int ) ([]b
 
 	sharedKey := pubKey.MulScalar(skR.Add(skU.ModInt).GetValue())
 
-	symmetricKey := kdf(sharedKey, keyLength)
+	symmetricKey := kdf(sharedKey, cxt.symKeySize)
 
 	return symmetricKey, &Capsule{pkR, pkU, sElem}
 }
 
-func decapsulate(cxt *Context, privKey *UmbralFieldElement, capsule *Capsule, keyLength int) []byte {
+func decapsulate(cxt *Context, privKey *UmbralFieldElement, capsule *Capsule) []byte {
 
 	sharedKey := capsule.E.Add(&capsule.V.CurveElement).MulScalar(privKey.GetValue())
-	key := kdf(sharedKey, keyLength)
+	key := kdf(sharedKey, cxt.symKeySize)
 
 	if !capsule.verify(cxt) {
 		log.Panicf("Capsule validation failed.") // TODO: not sure this should be a panic

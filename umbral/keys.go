@@ -41,6 +41,11 @@ func GenPrivateKey(cxt *Context) *UmbralFieldElement {
 	return &UmbralFieldElement{*e}
 }
 
+func MakePrivateKey(cxt *Context, mi *field.ModInt) *UmbralFieldElement {
+	e := cxt.targetField.NewElement(mi.GetValue())
+	return &UmbralFieldElement{*e}
+}
+
 func (key *UmbralFieldElement) GetPublicKey(cxt *Context) *UmbralCurveElement {
 	calcPublicKey := cxt.curveField.GetGen().MulScalar(key.GetValue())
 	return &UmbralCurveElement{ *calcPublicKey }
