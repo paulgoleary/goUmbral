@@ -132,7 +132,7 @@ func (field *CurveField) MakeElementFromX(x *big.Int) *CurveElement {
 func (field *CurveField) newElementFromStrings(xStr string, yStr string) *CurveElement {
 	targetOrder := field.GetTargetField().FieldOrder
 	return &CurveElement{&field.CurveParams,
-	PointLike{MakeModIntStr(xStr, true, targetOrder), MakeModIntStr(yStr, true, targetOrder)}}
+	PointLike{MakeModIntStr(xStr, 10, targetOrder), MakeModIntStr(yStr, 10, targetOrder)}}
 }
 
 func getLengthInBytes( field *CurveField ) int {

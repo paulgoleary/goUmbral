@@ -80,3 +80,71 @@ func TestCapsuleSer(t *testing.T) {
 		t.Errorf("Incompatible serialization of Capsule: expect %s, got %s", expectSerStr, cSerString)
 	}
 }
+
+func TestPoly(t *testing.T) {
+
+	bigMod := big.NewInt(1000 * 1000)
+
+	// trivial case
+	// Evaluate f(x)=2x^3-6x^2+2x-1} for x=3
+	coeffs := []*field.ModInt{
+		field.MakeModInt(2, true, bigMod),
+		field.MakeModInt(-6, true, bigMod),
+		field.MakeModInt(2, true, bigMod),
+		field.MakeModInt(-1, true, bigMod)}
+
+	eval := hornerPolyEval(coeffs, field.MakeModInt(3, true, bigMod))
+	expect := field.MakeModInt(5, true, bigMod)
+
+	if !eval.IsValEqual(expect) {
+		t.Errorf("Incorrect poly eval expected %v, got %v", expect, eval)
+	}
+
+}
+
+func TestPolyCompat(t *testing.T) {
+
+	cxt := MakeDefaultContext()
+
+	// assume pyUmbal generates poly parameters like this, with the shamir secret at ordinal 0 ...
+	compatCoeffs := []*field.ModInt {
+		field.MakeModIntStr("07f7037578510daae683e3a0c230977b67c015ec817a9553c6f49e5f1b901dd9", 16, cxt.GetOrder()),
+		field.MakeModIntStr("c639df1809706263ca78f613e016c0d392766ca6517199d618a7e765349a00c1", 16, cxt.GetOrder()),
+		field.MakeModIntStr("d60ee33c1b6438494b493d4ead371ab8b5b10006b8411ee142e73605f19d856d", 16, cxt.GetOrder()),
+		field.MakeModIntStr("0a1372445ab848d740b3a3c9316adfac0e452b7f7ab6e8b363e640004d97ff21", 16, cxt.GetOrder()),
+		field.MakeModIntStr("4803e4cc7250576fdeaa0d2667d1bdf4bcd70c0b76adbc97f9d91bbc79f53aff", 16, cxt.GetOrder()),
+	}
+
+	// ... we evaluate from left to right with the secret at (here) ordinal 4
+	testCoeffs := []*field.ModInt {compatCoeffs[4], compatCoeffs[3], compatCoeffs[2], compatCoeffs[1], compatCoeffs[0]}
+
+	// the important part is that the secret is at the correct (i.e. constant) position in the evaluation
+
+	testPolyEval := func (testIdStr string, expectRkString string) {
+		testId := field.MakeModIntStr(testIdStr, 16, cxt.GetOrder())
+
+		expectRk := field.MakeModIntStr(expectRkString, 16, cxt.GetOrder())
+		calcRk := hornerPolyEval(testCoeffs, testId)
+
+		if !calcRk.IsValEqual(expectRk) {
+			t.Errorf("Incorrect compat poly eval expected %v, got %v", expectRk, calcRk)
+		}
+	}
+
+	// input values and results derived from pyUmbral - validate that calc is the same
+
+	testPolyEval("04ce5fb04b5c751c7223f5f30832285472952a3716baf4463181ba719de8b4e6",
+		"97a70f529c273693657c6977bc81395fd416463eb435cf71e0413f8d48afe4b9")
+
+	testPolyEval("7597081f9407fea226d97a1ff87b5d622adac49aa9c5ff6c41c76d3679026152",
+		"52eb1301852cff46c71dcbf145d9e71b35ad0383ec58d7e30fda648c53b73712")
+
+	testPolyEval("39262fcba3883418fed57eb3ab52e956f7f8f4c77fb4e819d3ff0383a0c33d17",
+		"9dc31359fbfc62f521d6f280bb0be4daf0732aab7faf26dd954d4f451fda606d")
+
+	testPolyEval("04589aa1f0b2f49beb68f425f4e5d2713656d4acf26cf4d24caeada1c5d71950",
+		"9356564954a5bbd474785b416dfbe864261aabb47ba3b9117870f23cc664ca83")
+
+	testPolyEval("f6065f0e116c91971615ebcb568c3ddaad0a1dc25ea952374bdfacc89a7b85c8",
+		"df1e495dc8fb81119a86bec9ec15d308a162c9932dff52666858f780e2f59e75")
+}

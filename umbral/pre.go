@@ -83,6 +83,10 @@ func SplitReKey(cxt *Context, privA *UmbralFieldElement, pubB *UmbralCurveElemen
 
 	dhB := pubB.Mul(x) // pk_b^x
 
+	// hash of:
+	// . gen^x - where x is ephemeral
+	// . gen^b - public key of b
+	// . pk_b^x - so gen^(bx)
 	d := hashToModInt(cxt, [][]byte {
 		xComp.toBytes(true),
 		pubB.toBytes(true),

@@ -47,10 +47,10 @@ func MakeModIntWords(w []big.Word, frozen bool, mod *big.Int) *ModInt {
 	return &ModInt{ *bi, frozen, mod}
 }
 
-func MakeModIntStr(x string, frozen bool, mod *big.Int) *ModInt {
+func MakeModIntStr(x string, base int, mod *big.Int) *ModInt {
 	ret := big.Int{}
-	ret.SetString(x, 10)
-	return &ModInt{ret, frozen, mod}
+	ret.SetString(x, base)
+	return &ModInt{ret, true, mod}
 }
 
 func (bi *ModInt) GetValue() *big.Int {
