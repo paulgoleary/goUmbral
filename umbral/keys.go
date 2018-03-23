@@ -33,6 +33,20 @@ func (key *UmbralCurveElement) toBytes(compressed bool) []byte {
 	return toUmbralBytes(&key.CurveElement, true, key.ElemParams.GetTargetField().LengthInBytes)
 }
 
+func (key *UmbralCurveElement) MulInt(mi *field.ModInt) *UmbralCurveElement {
+	if mi == nil {
+		return key
+	}
+	return &UmbralCurveElement{*key.MulScalar(mi.GetValue())}
+}
+
+func (key *UmbralCurveElement) Add(in *UmbralCurveElement) *UmbralCurveElement {
+	if in == nil {
+		return key
+	}
+	return &UmbralCurveElement{*key.CurveElement.Add(&in.CurveElement)}
+}
+
 // UmbralFieldElement
 
 func GenPrivateKey(cxt *Context) *UmbralFieldElement {

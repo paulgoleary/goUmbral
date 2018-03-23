@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"encoding/hex"
 	"goUmbral/field"
+	"fmt"
 )
 
 func TestPreBasics(t *testing.T) {
@@ -159,9 +160,62 @@ func TestCapDecap(t *testing.T) {
 
 	capKey, cap := encapsulate(cxt, alicePub)
 
-	decapKey := decapsulate(cxt, alicePriv, cap)
+	decapKey := decapDirect(cxt, alicePriv, cap)
 
 	if !reflect.DeepEqual(decapKey, capKey ) {
 		t.Errorf("Incorrect key cap/decap, expected %v, got %v", capKey, decapKey)
+	}
+}
+
+type TestPoint struct {
+	x *field.ModInt
+	y *field.ModInt
+}
+
+func (tp TestPoint) String() string {
+	return fmt.Sprintf("[%v, %v]", tp.x, tp.y)
+}
+
+func testShamirWithSecret(t *testing.T, cxt *Context, coeff0 *field.ModInt) {
+
+	// make the coefficients ...
+	// coeff0 is the 'secret'
+	coeffs := makeShamirPolyCoeffs(cxt, coeff0, 10)
+
+	// ... make and calc the points ...
+	points := make([]TestPoint, 20)
+	for i, _ := range points {
+		points[i].x = field.MakeModIntRandom(cxt.GetOrder())
+		points[i].y = hornerPolyEval(coeffs, points[i].x)
+		field.Trace(points[i])
+	}
+
+	xs := make([]*field.ModInt, len(points) / 2)
+	for i := 0; i < len(points); i += 2 {
+		xs[i / 2] = points[i].x
+	}
+
+	calcSecret := field.MakeModInt(0, true, cxt.GetOrder())
+
+	// ... now the testing. recover from complete subset of shares.
+	for i := 0; i < len(points); i += 2 {
+		lambda := calcLambdaCoeff(points[i].x, xs)
+		calcSecret = calcSecret.Add(lambda.Mul(points[i].y))
+	}
+
+	if !coeff0.IsValEqual(calcSecret) {
+		t.Errorf("Incorrect recovered secret value, expected %v, got %v", coeff0, calcSecret)
+	}
+}
+
+func TestShamirs(t *testing.T) {
+
+	cxt := MakeDefaultContext()
+
+	testShamirWithSecret(t, cxt, field.MakeModInt(1, true, cxt.GetOrder()))
+
+	for i := 0; i < 100; i++ {
+		testSecret := field.MakeModIntRandom(cxt.GetOrder())
+		testShamirWithSecret(t, cxt, testSecret)
 	}
 }

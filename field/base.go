@@ -12,7 +12,7 @@ var TWO = big.NewInt(2)
 var THREE = big.NewInt(3)
 
 // for validation purposes this special value is assumed to match any other modulus
-var MOD_ANY = big.NewInt(-1)
+var MOD_ANY *big.Int = nil
 
 var MI_ZERO = MakeModInt(0, true, MOD_ANY)
 var MI_ONE = MakeModInt(1, true, MOD_ANY)
@@ -121,11 +121,24 @@ func (bi *ModInt) modInternal(in *ModInt) *ModInt {
 		bi = bi.copyUnfrozen()
 	}
 
-	if bi.m != in.m && in.m != MOD_ANY && bi.m.Cmp(in.m) != 0 {
-		log.Panicf("Cannot perform mod arithmetic with different modulo")
+	var mod = bi.m
+
+	// common case should be that both ModInt's point to same big.Int modulus instance
+	if bi.m != in.m {
+		if in.m == MOD_ANY {
+			mod = bi.m
+		} else if bi.m == MOD_ANY {
+			mod = in.m
+		} else if bi.m.Cmp(in.m) == 0 {
+			mod = bi.m
+		}
 	}
 
-	bi.v.Mod(&bi.v, bi.m)
+	if mod == MOD_ANY {
+		log.Panicf("Cannot perform mod arithmetic with unspecified or inconsistent modulo")
+	}
+
+	bi.v.Mod(&bi.v, mod)
 	return bi
 }
 
@@ -148,6 +161,9 @@ func (bi *ModInt) Sub(in *ModInt) *ModInt {
 func (bi *ModInt) Mul(in *ModInt) *ModInt {
 	if bi.frozen {
 		bi = bi.copyUnfrozen()
+	}
+	if in.IsValEqual(MI_ONE) {
+		return bi
 	}
 	bi.v.Mul(&bi.v, &in.v)
 	return bi.modInternal(in)

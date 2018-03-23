@@ -31,6 +31,6 @@ func TestAPIBasics(t *testing.T) {
 		cFrags[i] = ReEncapsulate(kFrags[i], capsule)
 	}
 
-	testDecryptFrags := DecryptFragments(cxt, capsule, privKeyBob, pubKeyAlice, cipherText)
+	testDecryptFrags := DecryptFragments(cxt, capsule, cFrags, privKeyBob, pubKeyAlice, cipherText)
 	println(testDecryptFrags)
 }

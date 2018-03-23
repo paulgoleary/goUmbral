@@ -46,7 +46,7 @@ func Encrypt( cxt *Context, pubKey *UmbralCurveElement, plainText []byte ) ([]by
 
 func DecryptDirect( cxt *Context, capsule *Capsule, privKey *UmbralFieldElement, cipherText []byte ) []byte {
 
-	key := decapsulate(cxt, privKey, capsule)
+	key := decapDirect(cxt, privKey, capsule)
 	dem := MakeDEM(key)
 
 	capsuleBytes := capsule.toBytes()
@@ -54,7 +54,9 @@ func DecryptDirect( cxt *Context, capsule *Capsule, privKey *UmbralFieldElement,
 	return dem.decrypt(cipherText, capsuleBytes)
 }
 
-func DecryptFragments( cxt *Context, capsule *Capsule, privKey *UmbralFieldElement, origPubKey *UmbralCurveElement, cipherText []byte ) []byte {
+func DecryptFragments( cxt *Context, capsule *Capsule, reKeyFrags []*CFrag, privKey *UmbralFieldElement, origPubKey *UmbralCurveElement, cipherText []byte ) []byte {
+
+	openCapsule(cxt, privKey, origPubKey, capsule, reKeyFrags)
 
 	return nil
 }
@@ -74,6 +76,14 @@ type KFrag struct {
 	u1 *UmbralCurveElement
 	z1 *field.ModInt
 	z2 *field.ModInt
+}
+
+func makeShamirPolyCoeffs(cxt *Context, coeff0 *field.ModInt, threshold int) []*field.ModInt {
+	coeffs := make([]*field.ModInt, threshold - 1)
+	for i := range coeffs {
+		coeffs[i] = field.MakeModIntRandom(cxt.GetOrder())
+	}
+	return append(coeffs, coeff0)
 }
 
 func SplitReKey(cxt *Context, privA *UmbralFieldElement, pubB *UmbralCurveElement, threshold int, numSplits int) []*KFrag {
@@ -96,11 +106,7 @@ func SplitReKey(cxt *Context, privA *UmbralFieldElement, pubB *UmbralCurveElemen
 
 	coeff0 := privA.Mul(d.Invert())
 
-	coeffs := make([]*field.ModInt, threshold - 1)
-	for i := range coeffs {
-		coeffs[i] = field.MakeModIntRandom(cxt.GetOrder())
-	}
-	coeffs = append(coeffs, coeff0)
+	coeffs := makeShamirPolyCoeffs(cxt, coeff0, threshold)
 
 	kFrags := make([]*KFrag, numSplits)
 	for i := range kFrags {
@@ -142,13 +148,62 @@ type CFrag struct {
 }
 
 func ReEncapsulate(frag *KFrag, cap *Capsule) *CFrag {
-	// e1 = k_frag.bn_key * capsule._point_eph_e
+
 	e1 := cap.E.MulScalar(frag.rk.GetValue())
 
-	// v1 = k_frag.bn_key * capsule._point_eph_v
 	v1 := cap.V.MulScalar(frag.rk.GetValue())
 
 	return &CFrag{&UmbralCurveElement{*e1}, &UmbralCurveElement{*v1}, frag.id, frag.xComp}
+}
+
+func calcLPart(inId *field.ModInt, calcIdOrd int, ids []*field.ModInt) *field.ModInt {
+	var result *field.ModInt
+	if ids[calcIdOrd].IsValEqual(inId) {
+		result = field.MI_ONE
+	} else {
+		div := ids[calcIdOrd].Sub(inId).Invert()
+		result = ids[calcIdOrd].Mul(div)
+	}
+	if calcIdOrd == len(ids) - 1 {
+		return result
+	} else {
+		return calcLPart(inId, calcIdOrd + 1, ids).Mul(result)
+	}
+}
+
+func calcLambdaCoeff(inId *field.ModInt, selectedIds []*field.ModInt) *field.ModInt {
+	switch len(selectedIds) {
+	case 0: return nil
+	case 1: if selectedIds[0].IsValEqual(inId) {
+			return nil
+		}
+	}
+	return calcLPart(inId, 0, selectedIds)
+}
+
+func reconstructSecret(inFrags []*CFrag) (*UmbralCurveElement, *UmbralCurveElement, *UmbralCurveElement) {
+
+	if len(inFrags) == 0 {
+		log.Panicf("Shouldn't call this with no fragments")
+	}
+
+	ids := make([]*field.ModInt, len(inFrags))
+	for x, cf := range inFrags {
+		ids[x] = cf.id
+	}
+
+	var eFinal *UmbralCurveElement = nil
+	var vFinal *UmbralCurveElement = nil
+
+	for _, cf := range inFrags {
+		lambda := calcLambdaCoeff(cf.id, ids)
+		e := cf.e1.MulInt(lambda)
+		v := cf.v1.MulInt(lambda)
+		eFinal = e.Add(eFinal)
+		vFinal = v.Add(vFinal)
+	}
+
+	return eFinal, vFinal, inFrags[0].x
 }
 
 func kdf(keyPoint *field.CurveElement, keySize int) []byte {
@@ -184,9 +239,9 @@ func encapsulate( cxt *Context, pubKey *UmbralCurveElement) ([]byte, *Capsule) {
 	return symmetricKey, &Capsule{pkR, pkU, sElem}
 }
 
-func decapsulate(cxt *Context, privKey *UmbralFieldElement, capsule *Capsule) []byte {
+func decapDirect(cxt *Context, privKey *UmbralFieldElement, capsule *Capsule) []byte {
 
-	sharedKey := capsule.E.Add(&capsule.V.CurveElement).MulScalar(privKey.GetValue())
+	sharedKey := capsule.E.Add(capsule.V).MulScalar(privKey.GetValue())
 	key := kdf(sharedKey, cxt.symKeySize)
 
 	if !capsule.verify(cxt) {
@@ -194,6 +249,29 @@ func decapsulate(cxt *Context, privKey *UmbralFieldElement, capsule *Capsule) []
 	}
 
 	return key
+}
+
+func decapReEncrypted(cxt *Context, targetPrivKey *UmbralFieldElement, origPublicKey *UmbralCurveElement, rec *ReEncCapsule) []byte {
+
+	targetPubKey := targetPrivKey.GetPublicKey(cxt)
+	field.Trace(targetPubKey)
+
+	return nil
+}
+
+type ReEncCapsule struct {
+	origCap *Capsule
+	ePrime *UmbralCurveElement
+	vPrime *UmbralCurveElement
+	pointNI *UmbralCurveElement
+}
+
+func openCapsule(cxt *Context, targetPrivKey *UmbralFieldElement, origPublicKey *UmbralCurveElement, capsule *Capsule, reKeyFrags []*CFrag) []byte {
+
+	ePrime, vPrime, pointNI := reconstructSecret(reKeyFrags)
+	rec := &ReEncCapsule{ capsule, ePrime, vPrime, pointNI }
+
+	return decapReEncrypted(cxt, targetPrivKey, origPublicKey, rec)
 }
 
 func traceHash(h hash.Hash) {
