@@ -24,7 +24,7 @@ func TestAPIBasics(t *testing.T) {
 		t.Errorf( "Direct decryption failed")
 	}
 
-	kFrags := SplitReKey(cxt, privKeyAlice, pubKeyBob, 1, 1 )
+	kFrags := SplitReKey(cxt, privKeyAlice, pubKeyBob, 10, 20 )
 
 	cFrags := make([]*CFrag, len(kFrags))
 	for i := range kFrags {
@@ -32,5 +32,7 @@ func TestAPIBasics(t *testing.T) {
 	}
 
 	testDecryptFrags := DecryptFragments(cxt, capsule, cFrags, privKeyBob, pubKeyAlice, cipherText)
-	println(testDecryptFrags)
+	if !reflect.DeepEqual(plainText, testDecryptFrags) {
+		t.Errorf( "Re-encapsulated fragment decryption failed")
+	}
 }

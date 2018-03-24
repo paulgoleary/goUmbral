@@ -51,7 +51,7 @@ func TestKDF(t *testing.T) {
 	_, pubKey := makeTestKeys(cxt, 7)
 
 	keyLength := 32
-	testData := kdf(&pubKey.CurveElement, keyLength)
+	testData := kdf(pubKey, keyLength)
 
 	// testing for compat with pyUmbral
 	expectData := []byte {
@@ -100,7 +100,6 @@ func TestPoly(t *testing.T) {
 	if !eval.IsValEqual(expect) {
 		t.Errorf("Incorrect poly eval expected %v, got %v", expect, eval)
 	}
-
 }
 
 func TestPolyCompat(t *testing.T) {
@@ -187,7 +186,6 @@ func testShamirWithSecret(t *testing.T, cxt *Context, coeff0 *field.ModInt) {
 	for i, _ := range points {
 		points[i].x = field.MakeModIntRandom(cxt.GetOrder())
 		points[i].y = hornerPolyEval(coeffs, points[i].x)
-		field.Trace(points[i])
 	}
 
 	xs := make([]*field.ModInt, len(points) / 2)

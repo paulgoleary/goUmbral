@@ -56,9 +56,12 @@ func DecryptDirect( cxt *Context, capsule *Capsule, privKey *UmbralFieldElement,
 
 func DecryptFragments( cxt *Context, capsule *Capsule, reKeyFrags []*CFrag, privKey *UmbralFieldElement, origPubKey *UmbralCurveElement, cipherText []byte ) []byte {
 
-	openCapsule(cxt, privKey, origPubKey, capsule, reKeyFrags)
+	key := openCapsule(cxt, privKey, origPubKey, capsule, reKeyFrags)
+	dem := MakeDEM(key)
 
-	return nil
+	capsuleBytes := capsule.toBytes()
+
+	return dem.decrypt(cipherText, capsuleBytes)
 }
 
 func hornerPolyEval(poly []*field.ModInt, x *field.ModInt) *field.ModInt {
@@ -149,11 +152,10 @@ type CFrag struct {
 
 func ReEncapsulate(frag *KFrag, cap *Capsule) *CFrag {
 
-	e1 := cap.E.MulScalar(frag.rk.GetValue())
+	e1 := cap.E.MulInt(frag.rk)
+	v1 := cap.V.MulInt(frag.rk)
 
-	v1 := cap.V.MulScalar(frag.rk.GetValue())
-
-	return &CFrag{&UmbralCurveElement{*e1}, &UmbralCurveElement{*v1}, frag.id, frag.xComp}
+	return &CFrag{e1, v1, frag.id, frag.xComp}
 }
 
 func calcLPart(inId *field.ModInt, calcIdOrd int, ids []*field.ModInt) *field.ModInt {
@@ -206,11 +208,9 @@ func reconstructSecret(inFrags []*CFrag) (*UmbralCurveElement, *UmbralCurveEleme
 	return eFinal, vFinal, inFrags[0].x
 }
 
-func kdf(keyPoint *field.CurveElement, keySize int) []byte {
+func kdf(keyElem *UmbralCurveElement, keySize int) []byte {
 
-	// TODO: awkward?
-	pointKey := UmbralCurveElement{*keyPoint}
-	keyMaster := hkdf.New(sha512.New, pointKey.toBytes(true), nil, nil)
+	keyMaster := hkdf.New(sha512.New, keyElem.toBytes(true), nil, nil)
 
 	derivedKey := make([]byte, keySize)
 	keyMaster.Read(derivedKey)
@@ -232,7 +232,7 @@ func encapsulate( cxt *Context, pubKey *UmbralCurveElement) ([]byte, *Capsule) {
 	s := skU.Add(skR.Mul(h))
 	sElem := cxt.targetField.NewElement(s.GetValue())
 
-	sharedKey := pubKey.MulScalar(skR.Add(skU.ModInt).GetValue())
+	sharedKey := pubKey.MulInt(skR.Add(skU.ModInt))
 
 	symmetricKey := kdf(sharedKey, cxt.symKeySize)
 
@@ -241,7 +241,7 @@ func encapsulate( cxt *Context, pubKey *UmbralCurveElement) ([]byte, *Capsule) {
 
 func decapDirect(cxt *Context, privKey *UmbralFieldElement, capsule *Capsule) []byte {
 
-	sharedKey := capsule.E.Add(capsule.V).MulScalar(privKey.GetValue())
+	sharedKey := capsule.E.Add(capsule.V).MulInt(privKey.ModInt)
 	key := kdf(sharedKey, cxt.symKeySize)
 
 	if !capsule.verify(cxt) {
@@ -254,9 +254,37 @@ func decapDirect(cxt *Context, privKey *UmbralFieldElement, capsule *Capsule) []
 func decapReEncrypted(cxt *Context, targetPrivKey *UmbralFieldElement, origPublicKey *UmbralCurveElement, rec *ReEncCapsule) []byte {
 
 	targetPubKey := targetPrivKey.GetPublicKey(cxt)
-	field.Trace(targetPubKey)
 
-	return nil
+	// same computation as in SplitReKey except that the target private key is now known
+	d := hashToModInt(cxt, [][]byte {
+		rec.pointNI.toBytes(true),
+		targetPubKey.toBytes(true),
+		rec.pointNI.MulInt(targetPrivKey.ModInt).toBytes(true)})
+
+	// from encapsulate: sharedKey := pubKey.MulScalar(skR.Add(skU.ModInt).GetValue())
+	// shared_key = d * (e_prime + v_prime)
+	sharedKey := rec.ePrime.Add(rec.vPrime).MulInt(d)
+
+	symmetricKey := kdf(sharedKey, cxt.symKeySize)
+
+	// checking...
+	e := rec.origCap.E
+    v := rec.origCap.V
+    s := rec.origCap.s
+    h := hashToModInt(cxt, [][]byte{
+    	e.toBytes(true),
+    	v.toBytes(true),
+	})
+    invD := d.Invert()
+
+    // TODO: similar (?) to logic in verify(...)
+    l := origPublicKey.MulInt(s.Mul(invD))
+    r := rec.ePrime.MulInt(h).Add(rec.vPrime)
+    if !l.IsValEqual(&r.PointLike) {
+    	log.Panicf("Failed decapulation check")
+	}
+
+	return symmetricKey
 }
 
 type ReEncCapsule struct {
