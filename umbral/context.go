@@ -1,17 +1,17 @@
 package umbral
 
 import (
-	"goUmbral/field"
 	"goUmbral/crypto"
+	"goUmbral/field"
 	"math/big"
 )
 
 type Context struct {
-	curveField *field.CurveField
-	targetField *field.ZField
+	curveField   *field.CurveField
+	targetField  *field.ZField
 	minValSha512 *big.Int
-	U *field.CurveElement
-	symKeySize int
+	U            *field.CurveElement
+	symKeySize   int
 }
 
 func (cxt *Context) GetGen() *field.CurveElement {

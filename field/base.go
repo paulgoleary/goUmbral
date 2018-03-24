@@ -1,9 +1,9 @@
 package field
 
 import (
-	"math/big"
 	"fmt"
 	"log"
+	"math/big"
 )
 
 var ZERO = big.NewInt(0)
@@ -28,13 +28,13 @@ var MI_EIGHT = MakeModInt(8, true, MOD_ANY)
 	The full name here is more explicit: field.ModInt - that is, a large integer that is a component of a field, which implies/requires modular math.
 */
 type ModInt struct {
-	v big.Int
+	v      big.Int
 	frozen bool
-	m *big.Int
+	m      *big.Int
 }
 
 func MakeModInt(x int64, frozen bool, mod *big.Int) *ModInt {
-	return &ModInt{ *big.NewInt(x), frozen, mod}
+	return &ModInt{*big.NewInt(x), frozen, mod}
 }
 
 func MakeModIntRandom(order *big.Int) *ModInt {
@@ -44,7 +44,7 @@ func MakeModIntRandom(order *big.Int) *ModInt {
 func MakeModIntWords(w []big.Word, frozen bool, mod *big.Int) *ModInt {
 	bi := new(big.Int)
 	bi.SetBits(w)
-	return &ModInt{ *bi, frozen, mod}
+	return &ModInt{*bi, frozen, mod}
 }
 
 func MakeModIntStr(x string, base int, mod *big.Int) *ModInt {
@@ -178,7 +178,7 @@ func (bi *ModInt) Square() *ModInt {
 }
 
 func (bi *ModInt) isSquare() bool {
-	if (bi.IsValEqual(MI_ZERO)) {
+	if bi.IsValEqual(MI_ZERO) {
 		return true
 	}
 	return big.Jacobi(&bi.v, bi.m) == 1
@@ -222,7 +222,7 @@ func (bi *ModInt) String() string {
 	// return bi.v.Text(16)
 }
 
-type Field interface {}
+type Field interface{}
 
 /*
 type PointField interface {
@@ -255,7 +255,7 @@ type PointElement interface {
 
 type BaseField struct {
 	LengthInBytes int
-	FieldOrder *big.Int
+	FieldOrder    *big.Int
 }
 
 type PointLike struct {
@@ -298,8 +298,8 @@ func (p *PointLike) IsValEqual(elemIn *PointLike) bool {
 
 func MakePointFromBytes(pointBytes []byte, targetField *BaseField) *PointLike {
 
-	if len(pointBytes) != targetField.LengthInBytes * 2 {
-		log.Panicf("Point byte data must have length of 2X target field: got %v, expect %v", len(pointBytes), targetField.LengthInBytes * 2)
+	if len(pointBytes) != targetField.LengthInBytes*2 {
+		log.Panicf("Point byte data must have length of 2X target field: got %v, expect %v", len(pointBytes), targetField.LengthInBytes*2)
 	}
 
 	xBytes := pointBytes[:targetField.LengthInBytes]

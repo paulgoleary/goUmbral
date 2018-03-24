@@ -98,7 +98,7 @@ func TestPowWindow(t *testing.T) {
 	}
 }
 
-func testFrozeness(t *testing.T, x *ModInt, expect *ModInt, calc func (*ModInt) *ModInt) {
+func testFrozeness(t *testing.T, x *ModInt, expect *ModInt, calc func(*ModInt) *ModInt) {
 	save := x.copyUnfrozen()
 	y := calc(x)
 	if !save.IsValEqual(x) {
@@ -124,10 +124,10 @@ func TestModIntMath(t *testing.T) {
 
 	// reset to 100 - frozen
 	test100 = MakeModInt(100, true, testMod)
-	testFrozeness(t, test100, MakeModInt(200, false, testMod), func(x *ModInt) *ModInt { return x.Add(test100) } )
-	testFrozeness(t, test100, MakeModInt(0, false, testMod), func(x *ModInt) *ModInt { return x.Sub(test100) } )
-	testFrozeness(t, test100, MakeModInt(10000, false, testMod), func(x *ModInt) *ModInt { return x.Mul(test100) } )
-	testFrozeness(t, test100, MakeModInt(10000, false, testMod), func(x *ModInt) *ModInt { return x.Square() } )
-	testFrozeness(t, test100, MakeModInt(10, false, testMod), func(x *ModInt) *ModInt { return x.sqrt() } )
-	testFrozeness(t, test100, MakeModInt(330001, false, testMod), func(x *ModInt) *ModInt { return x.Invert() } )
+	testFrozeness(t, test100, MakeModInt(200, false, testMod), func(x *ModInt) *ModInt { return x.Add(test100) })
+	testFrozeness(t, test100, MakeModInt(0, false, testMod), func(x *ModInt) *ModInt { return x.Sub(test100) })
+	testFrozeness(t, test100, MakeModInt(10000, false, testMod), func(x *ModInt) *ModInt { return x.Mul(test100) })
+	testFrozeness(t, test100, MakeModInt(10000, false, testMod), func(x *ModInt) *ModInt { return x.Square() })
+	testFrozeness(t, test100, MakeModInt(10, false, testMod), func(x *ModInt) *ModInt { return x.sqrt() })
+	testFrozeness(t, test100, MakeModInt(330001, false, testMod), func(x *ModInt) *ModInt { return x.Invert() })
 }

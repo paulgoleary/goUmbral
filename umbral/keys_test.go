@@ -1,10 +1,10 @@
 package umbral
 
 import (
-	"testing"
+	"encoding/base64"
 	"goUmbral/crypto"
 	"math/big"
-	"encoding/base64"
+	"testing"
 )
 
 // TODO: implement serde functions and test ...

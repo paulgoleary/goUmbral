@@ -1,8 +1,8 @@
 package field
 
 import (
-	"math/big"
 	"log"
+	"math/big"
 )
 
 type CurveField struct {
@@ -14,8 +14,8 @@ type CurveField struct {
 
 type CurveParams struct {
 	BaseField
-	a          *ZElement
-	b          *ZElement
+	a *ZElement
+	b *ZElement
 }
 
 type CurveElement struct {
@@ -33,7 +33,7 @@ func (field *CurveField) initGenFromBytes(genNoCofacBytes []byte) {
 	newGenNoCoFac := field.MakeElementFromBytes(genNoCofacBytes)
 	field.genNoCofac = newGenNoCoFac
 	field.gen = field.genNoCofac.MulScalar(field.cofactor)
-	if !field.gen.isValid(){
+	if !field.gen.isValid() {
 		panic("Curve field generator needs to be valid")
 	}
 }
@@ -50,7 +50,7 @@ func (field *CurveField) MakeElementFromBytes(elemBytes []byte) *CurveElement {
 
 	pnt := MakePointFromBytes(elemBytes, &field.GetTargetField().BaseField)
 
-	elem := &CurveElement{ &field.CurveParams, *pnt}
+	elem := &CurveElement{&field.CurveParams, *pnt}
 
 	// needs to be frozen before validation
 	elem.freeze()
@@ -76,7 +76,7 @@ func (params *CurveParams) calcYSquared(xIn *ModInt) *ModInt {
 func (field *CurveField) MakeElementFromHash(h []byte) *CurveElement {
 	maxSafeBytes := field.GetTargetField().LengthInBytes - 1
 	if len(h) > maxSafeBytes {
-		log.Panicf("Cannot construct point from hash when byte length exceeds field capacity: max bytes %v, got %v", maxSafeBytes, len(h) )
+		log.Panicf("Cannot construct point from hash when byte length exceeds field capacity: max bytes %v, got %v", maxSafeBytes, len(h))
 	}
 	calcX := copyFromBytes(h, true, field.GetTargetField().FieldOrder)
 
@@ -132,10 +132,10 @@ func (field *CurveField) MakeElementFromX(x *big.Int) *CurveElement {
 func (field *CurveField) newElementFromStrings(xStr string, yStr string) *CurveElement {
 	targetOrder := field.GetTargetField().FieldOrder
 	return &CurveElement{&field.CurveParams,
-	PointLike{MakeModIntStr(xStr, 10, targetOrder), MakeModIntStr(yStr, 10, targetOrder)}}
+		PointLike{MakeModIntStr(xStr, 10, targetOrder), MakeModIntStr(yStr, 10, targetOrder)}}
 }
 
-func getLengthInBytes( field *CurveField ) int {
+func getLengthInBytes(field *CurveField) int {
 	return field.GetTargetField().LengthInBytes * 2
 }
 
@@ -144,7 +144,7 @@ func MakeCurveField(
 	b *ZElement,
 	order *big.Int,
 	genX *big.Int,
-	genY *big.Int ) *CurveField {
+	genY *big.Int) *CurveField {
 
 	field := new(CurveField)
 	field.a = a
@@ -154,7 +154,7 @@ func MakeCurveField(
 
 	field.gen = field.MakeElement(genX, genY)
 
-	if !field.gen.isValid(){
+	if !field.gen.isValid() {
 		panic("Curve field generator needs to be valid")
 	}
 
@@ -241,7 +241,7 @@ func (elem *CurveElement) freeze() {
 }
 
 func (elem *CurveElement) frozen() bool {
-	if (elem.IsInf()) {
+	if elem.IsInf() {
 		return true
 	}
 	return elem.PointLike.frozen()
@@ -263,7 +263,7 @@ func (elem *CurveElement) Pow(in *ModInt) *CurveElement {
 	return elem.PowZn(&in.v)
 }
 
-func validateModulo( mod1 *big.Int, mod2 *big.Int) {
+func validateModulo(mod1 *big.Int, mod2 *big.Int) {
 	// TODO: this is intentionally pointer comparison because we expect the ModInt m's to point to the same object
 	// need to think about this tho ...
 	if mod1 == nil || mod1 != mod2 {
@@ -346,7 +346,7 @@ func (elem *CurveElement) twiceInternal() *CurveElement {
 
 	x3.Freeze()
 	y3.Freeze()
-	return &CurveElement{ elem.ElemParams, PointLike {x3, y3}}
+	return &CurveElement{elem.ElemParams, PointLike{x3, y3}}
 }
 
 func (elem *CurveElement) mul(elemIn *CurveElement) *CurveElement {
@@ -389,5 +389,5 @@ func (elem *CurveElement) mul(elemIn *CurveElement) *CurveElement {
 
 	x3.Freeze()
 	y3.Freeze()
-	return &CurveElement{elem.ElemParams, PointLike {x3, y3}}
+	return &CurveElement{elem.ElemParams, PointLike{x3, y3}}
 }

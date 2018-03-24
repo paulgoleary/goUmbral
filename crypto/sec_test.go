@@ -1,8 +1,8 @@
 package crypto
 
 import (
-	"testing"
 	"math/big"
+	"testing"
 )
 
 // TODO: could be useful (?) to write some tests that check for correctness / compatibility against the go elliptic package implementations

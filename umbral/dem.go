@@ -1,10 +1,10 @@
 package umbral
 
 import (
-	"golang.org/x/crypto/chacha20poly1305"
 	"crypto/cipher"
-	"log"
 	"goUmbral/field"
+	"golang.org/x/crypto/chacha20poly1305"
+	"log"
 )
 
 type DEM struct {

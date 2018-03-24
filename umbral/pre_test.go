@@ -1,13 +1,13 @@
 package umbral
 
 import (
-	"testing"
+	"encoding/hex"
+	"fmt"
 	"goUmbral/crypto"
+	"goUmbral/field"
 	"math/big"
 	"reflect"
-	"encoding/hex"
-	"goUmbral/field"
-	"fmt"
+	"testing"
 )
 
 func TestPreBasics(t *testing.T) {
@@ -54,7 +54,7 @@ func TestKDF(t *testing.T) {
 	testData := kdf(pubKey, keyLength)
 
 	// testing for compat with pyUmbral
-	expectData := []byte {
+	expectData := []byte{
 		0x65, 0x5e, 0x25, 0xcf, 0x51, 0x9b, 0x03, 0x85, 0xeb, 0x41, 0xea, 0x6c, 0xb1, 0xe1, 0xce, 0x34,
 		0x54, 0x86, 0xab, 0x1f, 0x02, 0x08, 0x35, 0x6b, 0xb5, 0xe4, 0x09, 0x26, 0x47, 0xb4, 0xbc, 0xde}
 
@@ -69,7 +69,7 @@ func TestCapsuleSer(t *testing.T) {
 
 	_, pubKey7 := makeTestKeys(cxt, 7)
 
-	testElement10k, pubKey10k := makeTestKeys(cxt, 10 * 1000)
+	testElement10k, pubKey10k := makeTestKeys(cxt, 10*1000)
 
 	expectSerStr := "025cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc037a36d7efeac579690f7b89c8982329303a02bd710bc87f4eaaf5cfd84c2f6fae0000000000000000000000000000000000000000000000000000000000002710"
 
@@ -107,7 +107,7 @@ func TestPolyCompat(t *testing.T) {
 	cxt := MakeDefaultContext()
 
 	// assume pyUmbal generates poly parameters like this, with the shamir secret at ordinal 0 ...
-	compatCoeffs := []*field.ModInt {
+	compatCoeffs := []*field.ModInt{
 		field.MakeModIntStr("07f7037578510daae683e3a0c230977b67c015ec817a9553c6f49e5f1b901dd9", 16, cxt.GetOrder()),
 		field.MakeModIntStr("c639df1809706263ca78f613e016c0d392766ca6517199d618a7e765349a00c1", 16, cxt.GetOrder()),
 		field.MakeModIntStr("d60ee33c1b6438494b493d4ead371ab8b5b10006b8411ee142e73605f19d856d", 16, cxt.GetOrder()),
@@ -116,11 +116,11 @@ func TestPolyCompat(t *testing.T) {
 	}
 
 	// ... we evaluate from left to right with the secret at (here) ordinal 4
-	testCoeffs := []*field.ModInt {compatCoeffs[4], compatCoeffs[3], compatCoeffs[2], compatCoeffs[1], compatCoeffs[0]}
+	testCoeffs := []*field.ModInt{compatCoeffs[4], compatCoeffs[3], compatCoeffs[2], compatCoeffs[1], compatCoeffs[0]}
 
 	// the important part is that the secret is at the correct (i.e. constant) position in the evaluation
 
-	testPolyEval := func (testIdStr string, expectRkString string) {
+	testPolyEval := func(testIdStr string, expectRkString string) {
 		testId := field.MakeModIntStr(testIdStr, 16, cxt.GetOrder())
 
 		expectRk := field.MakeModIntStr(expectRkString, 16, cxt.GetOrder())
@@ -161,7 +161,7 @@ func TestCapDecap(t *testing.T) {
 
 	decapKey := decapDirect(cxt, alicePriv, cap)
 
-	if !reflect.DeepEqual(decapKey, capKey ) {
+	if !reflect.DeepEqual(decapKey, capKey) {
 		t.Errorf("Incorrect key cap/decap, expected %v, got %v", capKey, decapKey)
 	}
 }
@@ -188,9 +188,9 @@ func testShamirWithSecret(t *testing.T, cxt *Context, coeff0 *field.ModInt) {
 		points[i].y = hornerPolyEval(coeffs, points[i].x)
 	}
 
-	xs := make([]*field.ModInt, len(points) / 2)
+	xs := make([]*field.ModInt, len(points)/2)
 	for i := 0; i < len(points); i += 2 {
-		xs[i / 2] = points[i].x
+		xs[i/2] = points[i].x
 	}
 
 	calcSecret := field.MakeModInt(0, true, cxt.GetOrder())

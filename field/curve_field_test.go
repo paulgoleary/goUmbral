@@ -1,8 +1,8 @@
 package field
 
 import (
-	"testing"
 	"math/big"
+	"testing"
 )
 
 func makeTestCurve() *CurveField {
@@ -88,7 +88,7 @@ func TestCurveBasics(t *testing.T) {
 
 	testField := makeTestCurve()
 
-	testYFromX := func( xStr string, expectedYStr string ) {
+	testYFromX := func(xStr string, expectedYStr string) {
 		testElem := testField.newElementFromStrings(xStr, expectedYStr)
 		testCalc := testField.MakeElementFromX(&testElem.dataX.v)
 
@@ -104,7 +104,7 @@ func TestCurveBasics(t *testing.T) {
 
 	// curve instance is y^2 = x^3 + x
 	// 1^3 + 1 = 2
-	testYFromX( "1", MakeModInt(2, false, testField.GetTargetField().FieldOrder).sqrt().String())
+	testYFromX("1", MakeModInt(2, false, testField.GetTargetField().FieldOrder).sqrt().String())
 
 	testYFromX(
 		"7852334875614213225969535005319230321249629225894318783946607976937179571030765324627135523985138174020408497250901949150717492683934959664497943409406486",

@@ -1,19 +1,19 @@
 package umbral
 
 import (
-	"goUmbral/field"
 	"crypto/sha512"
-	"math/big"
 	"fmt"
-	"hash"
+	"goUmbral/field"
 	"golang.org/x/crypto/hkdf"
+	"hash"
 	"log"
+	"math/big"
 )
 
 type Capsule struct {
-	E	*UmbralCurveElement
-	V 	*UmbralCurveElement
-	s 	*field.ZElement
+	E *UmbralCurveElement
+	V *UmbralCurveElement
+	s *field.ZElement
 }
 
 // TODO: not complete implementation of Capsule or serialization
@@ -32,7 +32,7 @@ func (c *Capsule) verify(cxt *Context) bool {
 	return l.IsValEqual(&r.PointLike)
 }
 
-func Encrypt( cxt *Context, pubKey *UmbralCurveElement, plainText []byte ) ([]byte, *Capsule) {
+func Encrypt(cxt *Context, pubKey *UmbralCurveElement, plainText []byte) ([]byte, *Capsule) {
 
 	key, capsule := encapsulate(cxt, pubKey)
 
@@ -44,7 +44,7 @@ func Encrypt( cxt *Context, pubKey *UmbralCurveElement, plainText []byte ) ([]by
 	return cypher, capsule
 }
 
-func DecryptDirect( cxt *Context, capsule *Capsule, privKey *UmbralFieldElement, cipherText []byte ) []byte {
+func DecryptDirect(cxt *Context, capsule *Capsule, privKey *UmbralFieldElement, cipherText []byte) []byte {
 
 	key := decapDirect(cxt, privKey, capsule)
 	dem := MakeDEM(key)
@@ -54,7 +54,7 @@ func DecryptDirect( cxt *Context, capsule *Capsule, privKey *UmbralFieldElement,
 	return dem.decrypt(cipherText, capsuleBytes)
 }
 
-func DecryptFragments( cxt *Context, capsule *Capsule, reKeyFrags []*CFrag, privKey *UmbralFieldElement, origPubKey *UmbralCurveElement, cipherText []byte ) []byte {
+func DecryptFragments(cxt *Context, capsule *Capsule, reKeyFrags []*CFrag, privKey *UmbralFieldElement, origPubKey *UmbralCurveElement, cipherText []byte) []byte {
 
 	key := openCapsule(cxt, privKey, origPubKey, capsule, reKeyFrags)
 	dem := MakeDEM(key)
@@ -73,16 +73,16 @@ func hornerPolyEval(poly []*field.ModInt, x *field.ModInt) *field.ModInt {
 }
 
 type KFrag struct {
-	id *field.ModInt
-	rk *field.ModInt
+	id    *field.ModInt
+	rk    *field.ModInt
 	xComp *UmbralCurveElement
-	u1 *UmbralCurveElement
-	z1 *field.ModInt
-	z2 *field.ModInt
+	u1    *UmbralCurveElement
+	z1    *field.ModInt
+	z2    *field.ModInt
 }
 
 func makeShamirPolyCoeffs(cxt *Context, coeff0 *field.ModInt, threshold int) []*field.ModInt {
-	coeffs := make([]*field.ModInt, threshold - 1)
+	coeffs := make([]*field.ModInt, threshold-1)
 	for i := range coeffs {
 		coeffs[i] = field.MakeModIntRandom(cxt.GetOrder())
 	}
@@ -102,7 +102,7 @@ func SplitReKey(cxt *Context, privA *UmbralFieldElement, pubB *UmbralCurveElemen
 	// . gen^x - where x is ephemeral
 	// . gen^b - public key of b
 	// . pk_b^x - so gen^(bx)
-	d := hashToModInt(cxt, [][]byte {
+	d := hashToModInt(cxt, [][]byte{
 		xComp.toBytes(true),
 		pubB.toBytes(true),
 		dhB.toBytes(true)})
@@ -120,8 +120,8 @@ func SplitReKey(cxt *Context, privA *UmbralFieldElement, pubB *UmbralCurveElemen
 
 		y := field.MakeModIntRandom(cxt.GetOrder())
 
-		z1 := hashToModInt(cxt, [][]byte {
-			cxt.MulGen(y).toBytes(true), // gen^y
+		z1 := hashToModInt(cxt, [][]byte{
+			cxt.MulGen(y).toBytes(true),                                          // gen^y
 			field.BytesPadBigEndian(id.GetValue(), cxt.curveField.LengthInBytes), // TODO: ugly :/
 			pubA.toBytes(true),
 			pubB.toBytes(true),
@@ -137,7 +137,7 @@ func SplitReKey(cxt *Context, privA *UmbralFieldElement, pubB *UmbralCurveElemen
 		// . U^rk ??? why? U is a parameter and rk is known
 		// . hash of (gen^y, id, gen^a, gen^b, U^rk, gen^x)
 		// . y (random Z element) - (privA * hash)
-		kFrags[i] = &KFrag { id, rk, xComp, u1, z1, z2 }
+		kFrags[i] = &KFrag{id, rk, xComp, u1, z1, z2}
 	}
 
 	return kFrags
@@ -147,7 +147,7 @@ type CFrag struct {
 	e1 *UmbralCurveElement
 	v1 *UmbralCurveElement
 	id *field.ModInt
-	x *UmbralCurveElement
+	x  *UmbralCurveElement
 }
 
 func ReEncapsulate(frag *KFrag, cap *Capsule) *CFrag {
@@ -166,17 +166,19 @@ func calcLPart(inId *field.ModInt, calcIdOrd int, ids []*field.ModInt) *field.Mo
 		div := ids[calcIdOrd].Sub(inId).Invert()
 		result = ids[calcIdOrd].Mul(div)
 	}
-	if calcIdOrd == len(ids) - 1 {
+	if calcIdOrd == len(ids)-1 {
 		return result
 	} else {
-		return calcLPart(inId, calcIdOrd + 1, ids).Mul(result)
+		return calcLPart(inId, calcIdOrd+1, ids).Mul(result)
 	}
 }
 
 func calcLambdaCoeff(inId *field.ModInt, selectedIds []*field.ModInt) *field.ModInt {
 	switch len(selectedIds) {
-	case 0: return nil
-	case 1: if selectedIds[0].IsValEqual(inId) {
+	case 0:
+		return nil
+	case 1:
+		if selectedIds[0].IsValEqual(inId) {
 			return nil
 		}
 	}
@@ -218,7 +220,7 @@ func kdf(keyElem *UmbralCurveElement, keySize int) []byte {
 	return derivedKey
 }
 
-func encapsulate( cxt *Context, pubKey *UmbralCurveElement) ([]byte, *Capsule) {
+func encapsulate(cxt *Context, pubKey *UmbralCurveElement) ([]byte, *Capsule) {
 
 	skR := GenPrivateKey(cxt)
 	pkR := skR.GetPublicKey(cxt)
@@ -256,7 +258,7 @@ func decapReEncrypted(cxt *Context, targetPrivKey *UmbralFieldElement, origPubli
 	targetPubKey := targetPrivKey.GetPublicKey(cxt)
 
 	// same computation as in SplitReKey except that the target private key is now known
-	d := hashToModInt(cxt, [][]byte {
+	d := hashToModInt(cxt, [][]byte{
 		rec.pointNI.toBytes(true),
 		targetPubKey.toBytes(true),
 		rec.pointNI.MulInt(targetPrivKey.ModInt).toBytes(true)})
@@ -269,19 +271,19 @@ func decapReEncrypted(cxt *Context, targetPrivKey *UmbralFieldElement, origPubli
 
 	// checking...
 	e := rec.origCap.E
-    v := rec.origCap.V
-    s := rec.origCap.s
-    h := hashToModInt(cxt, [][]byte{
-    	e.toBytes(true),
-    	v.toBytes(true),
+	v := rec.origCap.V
+	s := rec.origCap.s
+	h := hashToModInt(cxt, [][]byte{
+		e.toBytes(true),
+		v.toBytes(true),
 	})
-    invD := d.Invert()
+	invD := d.Invert()
 
-    // TODO: similar (?) to logic in verify(...)
-    l := origPublicKey.MulInt(s.Mul(invD))
-    r := rec.ePrime.MulInt(h).Add(rec.vPrime)
-    if !l.IsValEqual(&r.PointLike) {
-    	log.Panicf("Failed decapulation check")
+	// TODO: similar (?) to logic in verify(...)
+	l := origPublicKey.MulInt(s.Mul(invD))
+	r := rec.ePrime.MulInt(h).Add(rec.vPrime)
+	if !l.IsValEqual(&r.PointLike) {
+		log.Panicf("Failed decapulation check")
 	}
 
 	return symmetricKey
@@ -289,15 +291,15 @@ func decapReEncrypted(cxt *Context, targetPrivKey *UmbralFieldElement, origPubli
 
 type ReEncCapsule struct {
 	origCap *Capsule
-	ePrime *UmbralCurveElement
-	vPrime *UmbralCurveElement
+	ePrime  *UmbralCurveElement
+	vPrime  *UmbralCurveElement
 	pointNI *UmbralCurveElement
 }
 
 func openCapsule(cxt *Context, targetPrivKey *UmbralFieldElement, origPublicKey *UmbralCurveElement, capsule *Capsule, reKeyFrags []*CFrag) []byte {
 
 	ePrime, vPrime, pointNI := reconstructSecret(reKeyFrags)
-	rec := &ReEncCapsule{ capsule, ePrime, vPrime, pointNI }
+	rec := &ReEncCapsule{capsule, ePrime, vPrime, pointNI}
 
 	return decapReEncrypted(cxt, targetPrivKey, origPublicKey, rec)
 }

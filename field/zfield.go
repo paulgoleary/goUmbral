@@ -1,8 +1,8 @@
 package field
 
 import (
-	"math/big"
 	"fmt"
+	"math/big"
 )
 
 type ZField struct {
@@ -39,11 +39,10 @@ func (zfield *ZField) NewZeroElement() *ZElement {
 }
 
 func (zfield *ZField) NewElement(elemValue *big.Int) *ZElement {
-	return &ZElement{zfield,CopyFrom(elemValue, true, zfield.FieldOrder)}
+	return &ZElement{zfield, CopyFrom(elemValue, true, zfield.FieldOrder)}
 }
 
 func (zfield *ZField) NewRandomElement() *ZElement {
 	randInt := GetRandomInt(zfield.FieldOrder)
-	return &ZElement{zfield,CopyFrom(randInt, true, zfield.FieldOrder)}
+	return &ZElement{zfield, CopyFrom(randInt, true, zfield.FieldOrder)}
 }
-
